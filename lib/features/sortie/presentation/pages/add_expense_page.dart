@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/util/db_loading_dialog.dart';
+import '../../../../core/util/recurring_manager.dart';
 
 class AddExpensePage extends StatefulWidget {
   final bool initialIsExpense;
@@ -22,6 +23,8 @@ class _AddExpensePageState extends State<AddExpensePage> {
   String selectedCategory = "Alimentation";
   DateTime selectedDate = DateTime.now();
   bool isLoading = false;
+  bool isRecurring = false;
+  String recurringFrequency = "Mensuel";
 
   final expenseCategories = [
     {"name": "Alimentation", "icon": Icons.restaurant_rounded, "color": AppColors.catAlimentation},
@@ -46,6 +49,68 @@ class _AddExpensePageState extends State<AddExpensePage> {
     super.initState();
     isExpenseMode = widget.initialIsExpense;
     selectedCategory = isExpenseMode ? "Alimentation" : "Salaire";
+  }
+
+  void _simulateReceiptScan() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.document_scanner_rounded, size: 48, color: AppColors.primaryGreen),
+              const SizedBox(height: 16),
+              const Text("Scanner un reçu / ticket de caisse 📷", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text("Sélectionnez ou prenez en photo un ticket. Le montant et la catégorie seront automatiquement extraits.", textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _applyScannedData("Supermarché Carrefour", "28500", "Alimentation");
+                      },
+                      icon: const Icon(Icons.photo_library_rounded),
+                      label: const Text("Galerie"),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _applyScannedData("Station Service TOTAL", "15000", "Transport");
+                      },
+                      icon: const Icon(Icons.camera_alt_rounded),
+                      label: const Text("Appareil photo"),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _applyScannedData(String merchant, String amount, String category) {
+    setState(() {
+      amountController.text = amount;
+      commentController.text = merchant;
+      selectedCategory = category;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Ticket scanné ! Montant: $amount FCFA ($merchant)"),
+        backgroundColor: AppColors.primaryGreen,
+      ),
+    );
   }
 
   Future<void> _handleSave() async {
@@ -101,6 +166,19 @@ class _AddExpensePageState extends State<AddExpensePage> {
         await sl.addEntreeUseCase(raison, intAmount);
       }
 
+      if (isRecurring) {
+        await RecurringManager.addRecurringTransaction(
+          RecurringTransaction(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            title: raison,
+            amount: intAmount,
+            category: selectedCategory,
+            frequency: recurringFrequency,
+            isExpense: isExpenseMode,
+          ),
+        );
+      }
+
       await Future.delayed(const Duration(milliseconds: 500));
 
       if (mounted) {
@@ -145,6 +223,13 @@ class _AddExpensePageState extends State<AddExpensePage> {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primaryGreen),
+            tooltip: "Scanner un reçu",
+            onPressed: _simulateReceiptScan,
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -292,6 +377,19 @@ class _AddExpensePageState extends State<AddExpensePage> {
                 ),
               ),
 
+              const SizedBox(height: 16),
+
+              // Scanner Quick Bar Button
+              OutlinedButton.icon(
+                onPressed: _simulateReceiptScan,
+                icon: const Icon(Icons.document_scanner_rounded),
+                label: const Text("📷 Scanner un ticket de caisse"),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  side: const BorderSide(color: AppColors.primaryGreen),
+                ),
+              ),
+
               const SizedBox(height: 20),
 
               // 3. Category Selector Grid
@@ -416,7 +514,64 @@ class _AddExpensePageState extends State<AddExpensePage> {
 
               const SizedBox(height: 16),
 
-              // 6. Optional Comment Field
+              // 6. Recurring Transaction Toggle (Abonnements / Loyer / Salaire)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.repeat_rounded, color: AppColors.primaryGreen, size: 20),
+                        SizedBox(width: 12),
+                        Text("Activer la récurrence", style: TextStyle(fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                    Switch(
+                      value: isRecurring,
+                      activeColor: AppColors.primaryGreen,
+                      onChanged: (val) {
+                        setState(() {
+                          isRecurring = val;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              if (isRecurring) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: recurringFrequency,
+                      isExpanded: true,
+                      items: ["Hebdomadaire", "Mensuel", "Annuel"]
+                          .map((f) => DropdownMenuItem(value: f, child: Text("Fréquence : $f")))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => recurringFrequency = val);
+                      },
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
+              // 7. Optional Comment Field
               TextField(
                 controller: commentController,
                 decoration: const InputDecoration(
@@ -427,7 +582,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
 
               const SizedBox(height: 30),
 
-              // 7. Enregistrer Button
+              // 8. Enregistrer Button
               ElevatedButton(
                 onPressed: isLoading ? null : _handleSave,
                 style: ElevatedButton.styleFrom(
