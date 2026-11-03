@@ -17,6 +17,7 @@ class AuthRepositoryImpl implements AuthRepository {
     final userModel = await remoteDataSource.login(emailOrPseudo, password);
     await localDataSource.cacheUser(userModel);
     await localDataSource.setGuestMode(false);
+    await localDataSource.setHasSeenOnboarding(true);
     return userModel;
   }
 
@@ -37,6 +38,7 @@ class AuthRepositoryImpl implements AuthRepository {
     );
     await localDataSource.cacheUser(userModel);
     await localDataSource.setGuestMode(false);
+    await localDataSource.setHasSeenOnboarding(true);
     return userModel;
   }
 
@@ -56,12 +58,22 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> setGuestMode(bool isGuest) async {
-    await localDataSource.setGuestMode(isGuest);
+  Future<void> setGuestMode(bool isGuest, {String? pseudo}) async {
+    await localDataSource.setGuestMode(isGuest, pseudo: pseudo);
   }
 
   @override
   Future<bool> isGuest() async {
     return await localDataSource.isGuest();
+  }
+
+  @override
+  Future<void> setHasSeenOnboarding(bool value) async {
+    await localDataSource.setHasSeenOnboarding(value);
+  }
+
+  @override
+  Future<bool> hasSeenOnboarding() async {
+    return await localDataSource.hasSeenOnboarding();
   }
 }

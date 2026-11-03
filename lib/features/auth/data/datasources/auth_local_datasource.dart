@@ -6,8 +6,10 @@ abstract class AuthLocalDataSource {
   Future<void> cacheUser(UserModel user);
   Future<UserModel?> getCachedUser();
   Future<void> clearUser();
-  Future<void> setGuestMode(bool isGuest);
+  Future<void> setGuestMode(bool isGuest, {String? pseudo});
   Future<bool> isGuest();
+  Future<void> setHasSeenOnboarding(bool value);
+  Future<bool> hasSeenOnboarding();
 }
 
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
@@ -15,6 +17,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   static const String CACHED_USER_KEY = 'CACHED_USER_KEY';
   static const String GUEST_MODE_KEY = 'GUEST_MODE_KEY';
+  static const String HAS_SEEN_ONBOARDING_KEY = 'HAS_SEEN_ONBOARDING_KEY';
 
   AuthLocalDataSourceImpl({required this.sharedPreferences});
 
@@ -40,24 +43,36 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   }
 
   @override
-  Future<void> setGuestMode(bool isGuest) async {
+  Future<void> setGuestMode(bool isGuest, {String? pseudo}) async {
     await sharedPreferences.setBool(GUEST_MODE_KEY, isGuest);
-    if (isGuest) {
-      final guestUser = UserModel.fromJson({
-        'id': 0,
-        'nom': 'Invité',
-        'prenom': 'Utilisateur',
-        'pseudo': 'Micaelle',
-        'email': 'invite@depensia.cm',
-        'token': '',
-        'isGuest': true,
-      });
-      await cacheUser(guestUser);
-    }
+    final String chosenPseudo = (pseudo != null && pseudo.trim().isNotEmpty)
+        ? pseudo.trim()
+        : 'Visiteur';
+
+    final guestUser = UserModel.fromJson({
+      'id': 0,
+      'nom': 'Invité',
+      'prenom': 'Utilisateur',
+      'pseudo': chosenPseudo,
+      'email': 'mode.visiteur@depensia.cm',
+      'token': '',
+      'isGuest': isGuest,
+    });
+    await cacheUser(guestUser);
   }
 
   @override
   Future<bool> isGuest() async {
     return sharedPreferences.getBool(GUEST_MODE_KEY) ?? true;
+  }
+
+  @override
+  Future<void> setHasSeenOnboarding(bool value) async {
+    await sharedPreferences.setBool(HAS_SEEN_ONBOARDING_KEY, value);
+  }
+
+  @override
+  Future<bool> hasSeenOnboarding() async {
+    return sharedPreferences.getBool(HAS_SEEN_ONBOARDING_KEY) ?? false;
   }
 }

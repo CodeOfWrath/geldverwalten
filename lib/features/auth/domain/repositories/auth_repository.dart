@@ -11,6 +11,8 @@ abstract class AuthRepository {
   });
   Future<UserEntity> getCurrentUser();
   Future<void> logout();
-  Future<void> setGuestMode(bool isGuest);
+  Future<void> setGuestMode(bool isGuest, {String? pseudo});
   Future<bool> isGuest();
+  Future<void> setHasSeenOnboarding(bool value);
+  Future<bool> hasSeenOnboarding();
 }

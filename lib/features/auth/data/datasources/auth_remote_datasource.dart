@@ -41,7 +41,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       // Mock user response for testing if offline backend
       return UserModel(
         id: 1,
-        nom: "Micaelle",
+        nom: "Invit_XX",
         prenom: "User",
         pseudo: emailOrPseudo.split('@')[0],
         email: emailOrPseudo.contains('@') ? emailOrPseudo : '$emailOrPseudo@depensia.cm',

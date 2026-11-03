@@ -22,7 +22,7 @@ class SoldeRemoteDataSourceImpl implements SoldeRemoteDataSource {
         'Accept': '*/*',
         'Access-Control-Allow-Origin': '*'
       },
-    );
+    ).timeout(const Duration(milliseconds: 800));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -36,7 +36,7 @@ class SoldeRemoteDataSourceImpl implements SoldeRemoteDataSource {
       }
       return result;
     } else {
-      throw ServerException('Échec du chargement du solde: ${response.statusCode}');
+      throw ServerException('Échec du chargement du solde');
     }
   }
 }

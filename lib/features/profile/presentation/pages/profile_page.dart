@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/util/budget_manager.dart';
+import '../../../../core/util/currency_manager.dart';
+import '../../../../core/util/notification_manager.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../auth/presentation/pages/onboarding_page.dart';
@@ -15,18 +18,159 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   UserEntity _user = UserEntity.guest;
   bool notificationsEnabled = true;
+  String _currentCurrency = "FCFA";
 
   @override
   void initState() {
     super.initState();
-    _loadUser();
+    _loadData();
   }
 
-  Future<void> _loadUser() async {
+  Future<void> _loadData() async {
     final user = await sl.getCurrentUserUseCase();
-    setState(() {
-      _user = user;
-    });
+    final notifState = await NotificationManager.isEnabled();
+    final currency = await CurrencyManager.getCurrency();
+
+    if (mounted) {
+      setState(() {
+        _user = user;
+        notificationsEnabled = notifState;
+        _currentCurrency = currency;
+      });
+    }
+  }
+
+  Future<void> _showCurrencySelectorDialog() async {
+    String selected = _currentCurrency;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text("Devise de l'application"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: CurrencyManager.availableCurrencies.map((c) {
+                    return RadioListTile<String>(
+                      title: Text("${c["name"]} (${c["symbol"]})"),
+                      value: c["symbol"]!,
+                      groupValue: selected,
+                      activeColor: AppColors.primaryGreen,
+                      onChanged: (val) {
+                        if (val != null) {
+                          setStateDialog(() {
+                            selected = val;
+                          });
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Annuler"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await CurrencyManager.setCurrency(selected);
+                    if (mounted) {
+                      Navigator.pop(context);
+                      setState(() {
+                        _currentCurrency = selected;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Devise modifiée en $selected !"),
+                          backgroundColor: AppColors.primaryGreen,
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    minimumSize: const Size(100, 44),
+                  ),
+                  child: const Text("Changer"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showBudgetLimitsDialog() async {
+    final limits = await BudgetManager.getAllLimits();
+    final controllers = <String, TextEditingController>{};
+
+    for (var entry in limits.entries) {
+      controllers[entry.key] = TextEditingController(text: entry.value.toString());
+    }
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Limites de dépenses par catégorie"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: controllers.entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: TextField(
+                    controller: entry.value,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: "${entry.key} ($_currentCurrency)",
+                      suffixText: _currentCurrency,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Annuler"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                for (var entry in controllers.entries) {
+                  final val = int.tryParse(entry.value.text.trim()) ?? 30000;
+                  await BudgetManager.setLimit(entry.key, val);
+                }
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Limites de budget mises à jour !"),
+                      backgroundColor: AppColors.primaryGreen,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                minimumSize: const Size(100, 44),
+              ),
+              child: const Text("Enregistrer"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -102,7 +246,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
               const SizedBox(height: 20),
 
-              // 2. Settings Menu List wrapped in Material for clean ink splashes
+              // 2. Settings Menu List
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
@@ -115,22 +259,32 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Column(
                     children: [
                       ListTile(
-                        leading: const Icon(Icons.notifications_none_rounded, color: AppColors.textPrimary),
-                        title: const Text("Notifications", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                        leading: const Icon(Icons.notifications_active_rounded, color: AppColors.textPrimary),
+                        title: const Text("Rappel quotidien (20:00)", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                        subtitle: const Text("Rappel pour renseigner vos dépenses", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                         trailing: Switch(
                           value: notificationsEnabled,
                           activeColor: AppColors.primaryGreen,
-                          onChanged: (val) {
+                          onChanged: (val) async {
                             setState(() => notificationsEnabled = val);
+                            await NotificationManager.setEnabled(val);
                           },
                         ),
                       ),
                       const Divider(height: 1, indent: 16, endIndent: 16),
 
                       _buildSettingsTile(
+                        icon: Icons.monetization_on_outlined,
+                        title: "Devise de l'application",
+                        trailingText: _currentCurrency,
+                        onTap: _showCurrencySelectorDialog,
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+
+                      _buildSettingsTile(
                         icon: Icons.tune_rounded,
-                        title: "Limites de dépenses",
-                        onTap: () {},
+                        title: "Limites de dépenses par catégorie",
+                        onTap: _showBudgetLimitsDialog,
                       ),
                       const Divider(height: 1, indent: 16, endIndent: 16),
 
@@ -143,23 +297,19 @@ class _ProfilePageState extends State<ProfilePage> {
                       const Divider(height: 1, indent: 16, endIndent: 16),
 
                       _buildSettingsTile(
-                        icon: Icons.download_rounded,
-                        title: "Exporter mes données",
-                        onTap: () {},
-                      ),
-                      const Divider(height: 1, indent: 16, endIndent: 16),
-
-                      _buildSettingsTile(
                         icon: Icons.info_outline_rounded,
                         title: "À propos de Dépensia",
-                        onTap: () {},
-                      ),
-                      const Divider(height: 1, indent: 16, endIndent: 16),
-
-                      _buildSettingsTile(
-                        icon: Icons.help_outline_rounded,
-                        title: "Aide & Support",
-                        onTap: () {},
+                        onTap: () {
+                          showAboutDialog(
+                            context: context,
+                            applicationName: "Dépensia",
+                            applicationVersion: "1.0.0",
+                            applicationIcon: const Text("💰", style: TextStyle(fontSize: 32)),
+                            children: const [
+                              Text("Dépensia est votre allié financier au quotidien. Gérez vos dépenses, vos revenus et vos objectifs d'épargne en toute sécurité et hors-ligne."),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -233,7 +383,7 @@ class _ProfilePageState extends State<ProfilePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (trailingText != null)
-              Text(trailingText, style: const TextStyle(color: AppColors.textLight, fontSize: 13)),
+              Text(trailingText, style: const TextStyle(color: AppColors.textLight, fontSize: 13, fontWeight: FontWeight.bold)),
             const SizedBox(width: 4),
             const Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
           ],

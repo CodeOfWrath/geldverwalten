@@ -63,18 +63,15 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
     if (!mounted) return;
 
-    // Check if user is guest or logged in
-    bool isGuestMode = true;
+    // Check if user has already completed onboarding / first launch
+    bool hasSeenOnboarding = false;
     try {
-      isGuestMode = await sl.authRepository.isGuest();
+      hasSeenOnboarding = await sl.authRepository.hasSeenOnboarding();
     } catch (_) {}
 
-    Widget targetPage = const OnboardingPage();
-    if (isGuestMode) {
-      targetPage = const OnboardingPage();
-    } else {
-      targetPage = const MainNavigationShell();
-    }
+    final Widget targetPage = hasSeenOnboarding
+        ? const MainNavigationShell()
+        : const OnboardingPage();
 
     Navigator.pushReplacement(
       context,

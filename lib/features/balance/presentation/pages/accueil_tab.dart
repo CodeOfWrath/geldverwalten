@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/util/budget_manager.dart';
+import '../../../../core/util/currency_manager.dart';
+import '../../../../core/util/data_change_notifier.dart';
+import '../../../../core/util/notification_manager.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../sortie/domain/entities/sortie_entity.dart';
@@ -16,27 +20,77 @@ class _AccueilTabState extends State<AccueilTab> {
   String _selectedPeriod = "Mois";
   UserEntity _currentUser = UserEntity.guest;
   List<SortieEntity> _sorties = [];
+  Map<String, int> _categoryLimits = {};
+  String _currencySymbol = "FCFA";
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _checkPendingNotification();
+    dataChangeNotifier.addListener(_loadData);
+  }
+
+  @override
+  void dispose() {
+    dataChangeNotifier.removeListener(_loadData);
+    super.dispose();
+  }
+
+  Future<void> _checkPendingNotification() async {
+    final pending = await NotificationManager.hasPendingPopup();
+    if (pending && mounted) {
+      await NotificationManager.setPendingPopup(false);
+      NotificationManager.showNotificationPopup(context);
+    }
   }
 
   Future<void> _loadData() async {
     final user = await sl.getCurrentUserUseCase();
     final listSorties = await sl.getSortiesUseCase();
+    final limits = await BudgetManager.getAllLimits();
+    final currency = await CurrencyManager.getCurrency();
 
     if (mounted) {
       setState(() {
         _currentUser = user;
         _sorties = listSorties;
+        _categoryLimits = limits;
+        _currencySymbol = currency;
       });
     }
   }
 
   int get _totalDepenses {
     return _sorties.fold<int>(0, (sum, item) => sum + item.montant);
+  }
+
+  Map<String, int> get _categoryTotals {
+    final Map<String, int> totals = {
+      "Alimentation": 0,
+      "Transport": 0,
+      "Loisirs": 0,
+      "Santé": 0,
+      "Maison": 0,
+      "Autre": 0,
+    };
+
+    for (var s in _sorties) {
+      if (s.message.contains("Alimentation")) {
+        totals["Alimentation"] = (totals["Alimentation"] ?? 0) + s.montant;
+      } else if (s.message.contains("Transport")) {
+        totals["Transport"] = (totals["Transport"] ?? 0) + s.montant;
+      } else if (s.message.contains("Loisirs")) {
+        totals["Loisirs"] = (totals["Loisirs"] ?? 0) + s.montant;
+      } else if (s.message.contains("Santé")) {
+        totals["Santé"] = (totals["Santé"] ?? 0) + s.montant;
+      } else if (s.message.contains("Maison")) {
+        totals["Maison"] = (totals["Maison"] ?? 0) + s.montant;
+      } else {
+        totals["Autre"] = (totals["Autre"] ?? 0) + s.montant;
+      }
+    }
+    return totals;
   }
 
   @override
@@ -76,7 +130,7 @@ class _AccueilTabState extends State<AccueilTab> {
 
                 const SizedBox(height: 24),
 
-                // 6. Category Breakdown ("Répartition par catégorie")
+                // 6. Category Breakdown & Budget Limits
                 _buildCategoryBreakdownSection(),
 
                 const SizedBox(height: 24),
@@ -133,8 +187,11 @@ class _AccueilTabState extends State<AccueilTab> {
             border: Border.all(color: AppColors.border),
           ),
           child: IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: AppColors.textPrimary),
-            onPressed: () {},
+            icon: const Icon(Icons.notifications_active_rounded, color: AppColors.primaryGreen),
+            tooltip: "Notifications & Rappel",
+            onPressed: () {
+              NotificationManager.showNotificationPopup(context);
+            },
           ),
         ),
       ],
@@ -242,7 +299,7 @@ class _AccueilTabState extends State<AccueilTab> {
           ),
           const SizedBox(height: 12),
           Text(
-            "$total FCFA",
+            "$total $_currencySymbol",
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -312,6 +369,7 @@ class _AccueilTabState extends State<AccueilTab> {
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -337,6 +395,8 @@ class _AccueilTabState extends State<AccueilTab> {
   }
 
   Widget _buildCategoryBreakdownSection() {
+    final totals = _categoryTotals;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -348,46 +408,33 @@ class _AccueilTabState extends State<AccueilTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Répartition par catégorie",
+            "Limites de budget & Catégories",
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           if (_sorties.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16.0),
               child: Center(
                 child: Text(
-                  "Aucune dépense à afficher.\nAppuyez sur '+' pour ajouter une dépense.",
+                  "Aucune dépense enregistrée.\nAppuyez sur '+' pour ajouter votre première dépense.",
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
               ),
             )
           else
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: CustomPaint(
-                    painter: _DonutChartPainter(),
-                  ),
-                ),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildLegendItem("Alimentation", AppColors.catAlimentation),
-                      _buildLegendItem("Transport", AppColors.catTransport),
-                      _buildLegendItem("Loisirs", AppColors.catLoisirs),
-                      _buildLegendItem("Santé", AppColors.catSante),
-                    ],
-                  ),
-                ),
+                _buildBudgetProgressRow("Alimentation", totals["Alimentation"] ?? 0, AppColors.catAlimentation),
+                _buildBudgetProgressRow("Transport", totals["Transport"] ?? 0, AppColors.catTransport),
+                _buildBudgetProgressRow("Loisirs", totals["Loisirs"] ?? 0, AppColors.catLoisirs),
+                _buildBudgetProgressRow("Santé", totals["Santé"] ?? 0, AppColors.catSante),
               ],
             ),
         ],
@@ -395,23 +442,37 @@ class _AccueilTabState extends State<AccueilTab> {
     );
   }
 
-  Widget _buildLegendItem(String title, Color color) {
+  Widget _buildBudgetProgressRow(String category, int spent, Color color) {
+    final limit = _categoryLimits[category] ?? 50000;
+    final ratio = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
+    Color barColor = AppColors.primaryGreen;
+    if (spent >= limit) {
+      barColor = AppColors.accentRed;
+    } else if (ratio >= 0.8) {
+      barColor = Colors.orange;
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(category, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              Text("$spent / $limit $_currencySymbol", style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 6,
+              backgroundColor: barColor.withOpacity(0.15),
+              valueColor: AlwaysStoppedAnimation<Color>(barColor),
+            ),
           ),
         ],
       ),
@@ -452,35 +513,4 @@ class _LineChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-class _DonutChartPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 8;
-    final strokeWidth = 14.0;
-
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    final rect = Rect.fromCircle(center: center, radius: radius);
-
-    paint.color = AppColors.catAlimentation;
-    canvas.drawArc(rect, -1.57, 2.2, false, paint);
-
-    paint.color = AppColors.catTransport;
-    canvas.drawArc(rect, 0.7, 1.75, false, paint);
-
-    paint.color = AppColors.catLoisirs;
-    canvas.drawArc(rect, 2.5, 1.25, false, paint);
-
-    paint.color = AppColors.catSante;
-    canvas.drawArc(rect, 3.8, 1.0, false, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

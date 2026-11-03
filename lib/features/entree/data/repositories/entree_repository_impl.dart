@@ -1,3 +1,4 @@
+import '../../../../core/util/data_change_notifier.dart';
 import '../../domain/entities/entree_entity.dart';
 import '../../domain/repositories/entree_repository.dart';
 import '../datasources/entree_local_datasource.dart';
@@ -31,11 +32,16 @@ class EntreeRepositoryImpl implements EntreeRepository {
       origine: origine,
       date: "${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}",
     );
+
+    // 1. Local-First Instant Write
     await localDataSource.addLocalEntree(newModel);
-    try {
-      return await remoteDataSource.addEntree(origine, montant);
-    } catch (_) {
-      return newModel.toJson();
-    }
+
+    // 2. Notify entire app to refresh data in real time
+    dataChangeNotifier.notifyDataChanged();
+
+    // 3. Background async remote sync (non-blocking)
+    remoteDataSource.addEntree(origine, montant).then((_) {}).catchError((_) {});
+
+    return newModel.toJson();
   }
 }

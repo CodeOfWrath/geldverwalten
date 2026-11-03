@@ -21,8 +21,8 @@ class UserEntity {
     id: 0,
     nom: "Invité",
     prenom: "Utilisateur",
-    pseudo: "Micaelle",
-    email: "invite@depensia.cm",
+    pseudo: "Visiteur",
+    email: "mode.visiteur@depensia.cm",
     token: "",
     isGuest: true,
   );

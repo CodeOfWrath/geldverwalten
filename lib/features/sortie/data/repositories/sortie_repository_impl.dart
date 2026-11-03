@@ -1,3 +1,4 @@
+import '../../../../core/util/data_change_notifier.dart';
 import '../../domain/entities/sortie_entity.dart';
 import '../../domain/repositories/sortie_repository.dart';
 import '../datasources/sortie_local_datasource.dart';
@@ -44,11 +45,16 @@ class SortieRepositoryImpl implements SortieRepository {
       message: raison,
       date: "${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}",
     );
+
+    // 1. Local-First Instant Write
     await localDataSource.addLocalSortie(newModel);
-    try {
-      return await remoteDataSource.addSortie(raison, montant, idProjet);
-    } catch (_) {
-      return newModel.toJson();
-    }
+
+    // 2. Notify entire app to refresh data in real time
+    dataChangeNotifier.notifyDataChanged();
+
+    // 3. Background async remote sync (non-blocking)
+    remoteDataSource.addSortie(raison, montant, idProjet).then((_) {}).catchError((_) {});
+
+    return newModel.toJson();
   }
 }

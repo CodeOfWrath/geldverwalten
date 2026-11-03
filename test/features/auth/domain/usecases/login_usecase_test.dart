@@ -37,10 +37,16 @@ class MockAuthRepository implements AuthRepository {
   Future<void> logout() async {}
 
   @override
-  Future<void> setGuestMode(bool isGuest) async {}
+  Future<void> setGuestMode(bool isGuest, {String? pseudo}) async {}
 
   @override
   Future<bool> isGuest() async => false;
+
+  @override
+  Future<void> setHasSeenOnboarding(bool value) async {}
+
+  @override
+  Future<bool> hasSeenOnboarding() async => true;
 }
 
 void main() {

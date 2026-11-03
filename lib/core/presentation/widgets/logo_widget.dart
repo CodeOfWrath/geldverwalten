@@ -30,22 +30,13 @@ class DepensiaLogoWidget extends StatelessWidget {
             borderRadius: BorderRadius.circular(size * 0.25),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primaryGreen.withOpacity(0.3),
+                color: AppColors.primaryGreen.withValues(alpha: 0.3),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Wallet shape with flap
-              CustomPaint(
-                size: Size(size * 0.65, size * 0.65),
-                painter: _WalletPainter(),
-              ),
-            ],
-          ),
+          child: Image.asset('assets/images/Dépensia_logo.png'),
         ),
         if (showText) ...[
           const SizedBox(height: 12),
@@ -114,7 +105,7 @@ class _WalletPainter extends CustomPainter {
 
     // 2. Wallet Top Flap Curve
     final flapPaint = Paint()
-      ..color = Colors.white.withOpacity(0.9)
+      ..color = Colors.white.withValues(alpha: 0.9)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 

@@ -23,13 +23,13 @@ class ProjetRemoteDataSourceImpl implements ProjetRemoteDataSource {
         'Accept': '*/*',
         'Access-Control-Allow-Origin': '*'
       },
-    );
+    ).timeout(const Duration(milliseconds: 800));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((item) => ProjetModel.fromJson(item)).toList();
     } else {
-      throw ServerException('Échec du chargement des projets: ${response.statusCode}');
+      throw ServerException('Échec du chargement des projets');
     }
   }
 
@@ -45,12 +45,12 @@ class ProjetRemoteDataSourceImpl implements ProjetRemoteDataSource {
         'Access-Control-Allow-Origin': '*'
       },
       body: jsonEncode(data),
-    );
+    ).timeout(const Duration(milliseconds: 800));
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
-      throw ServerException('Échec de la création du projet: ${response.statusCode}');
+      throw ServerException('Échec de la création du projet');
     }
   }
 }

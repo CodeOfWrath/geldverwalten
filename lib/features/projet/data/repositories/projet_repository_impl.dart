@@ -1,3 +1,4 @@
+import '../../../../core/util/data_change_notifier.dart';
 import '../../domain/entities/projet_entity.dart';
 import '../../domain/repositories/projet_repository.dart';
 import '../datasources/projet_local_datasource.dart';
@@ -34,11 +35,16 @@ class ProjetRepositoryImpl implements ProjetRepository {
       montantCible: 100000,
       montantActuel: 0,
     );
+
+    // 1. Local-First Instant Write
     await localDataSource.addLocalProjet(newModel);
-    try {
-      return await remoteDataSource.createProjet(nomProjet);
-    } catch (_) {
-      return newModel.toJson();
-    }
+
+    // 2. Notify entire app to refresh data in real time
+    dataChangeNotifier.notifyDataChanged();
+
+    // 3. Background async remote sync (non-blocking)
+    remoteDataSource.createProjet(nomProjet).then((_) {}).catchError((_) {});
+
+    return newModel.toJson();
   }
 }

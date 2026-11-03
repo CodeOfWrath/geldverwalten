@@ -23,13 +23,13 @@ class EntreeRemoteDataSourceImpl implements EntreeRemoteDataSource {
         'Accept': '*/*',
         'Access-Control-Allow-Origin': '*'
       },
-    );
+    ).timeout(const Duration(milliseconds: 800));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((item) => EntreeModel.fromJson(item)).toList();
     } else {
-      throw ServerException('Échec du chargement des entrées: ${response.statusCode}');
+      throw ServerException('Échec du chargement des entrées');
     }
   }
 
@@ -44,12 +44,12 @@ class EntreeRemoteDataSourceImpl implements EntreeRemoteDataSource {
       Uri.parse('${ApiConstants.baseUrl}${ApiConstants.addEntree}'),
       headers: {'content-type': 'application/json'},
       body: jsonEncode(data),
-    );
+    ).timeout(const Duration(milliseconds: 800));
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
-      throw ServerException('Échec de l\'ajout de l\'entrée: ${response.statusCode}');
+      throw ServerException('Échec de l\'ajout de l\'entrée');
     }
   }
 }

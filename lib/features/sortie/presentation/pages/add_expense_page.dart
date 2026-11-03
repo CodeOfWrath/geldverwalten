@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/util/db_loading_dialog.dart';
 
 class AddExpensePage extends StatefulWidget {
   final bool initialIsExpense;
@@ -73,16 +74,18 @@ class _AddExpensePageState extends State<AddExpensePage> {
     if (selectedCategory == "Autre" && customNatureController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Veuillez préciser la nature du Mouvement."),
+          content: Text("Veuillez préciser la nature de la transaction."),
           backgroundColor: AppColors.accentRed,
         ),
       );
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    // 1. Show blocking DB loading popup
+    DbDialogs.showLoading(
+      context,
+      message: "Écriture dans la base de données locale...",
+    );
 
     try {
       final categoryLabel = selectedCategory == "Autre" && customNatureController.text.trim().isNotEmpty
@@ -93,35 +96,39 @@ class _AddExpensePageState extends State<AddExpensePage> {
       final raison = comment.isNotEmpty ? "$comment ($categoryLabel)" : categoryLabel;
 
       if (isExpenseMode) {
-        // Enregistrer une Dépense (Sortie)
         await sl.addSortieUseCase(raison, amountText, 1);
       } else {
-        // Enregistrer une Entrée (Revenu)
         await sl.addEntreeUseCase(raison, intAmount);
       }
 
+      await Future.delayed(const Duration(milliseconds: 500));
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isExpenseMode
-                  ? "Dépense enregistrée avec succès !"
-                  : "Entrée d'argent enregistrée avec succès !",
-            ),
-            backgroundColor: AppColors.primaryGreen,
-          ),
+        // 2. Hide DB loading popup
+        DbDialogs.hideLoading(context);
+
+        // 3. Show success popup dialog
+        await DbDialogs.showSuccess(
+          context,
+          title: "Enregistrement effectif !",
+          message: isExpenseMode
+              ? "La dépense de $amountText FCFA a été correctement enregistrée dans la base de données !"
+              : "L'entrée d'argent de $amountText FCFA a été correctement enregistrée dans la base de données !",
         );
-        Navigator.pop(context, true);
+
+        if (mounted) {
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       if (mounted) {
+        DbDialogs.hideLoading(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Transaction sauvegardée en mode hors-ligne."),
-            backgroundColor: AppColors.primaryGreen,
+            content: Text("Erreur lors de l'enregistrement dans la base de données."),
+            backgroundColor: AppColors.accentRed,
           ),
         );
-        Navigator.pop(context, true);
       }
     }
   }
@@ -144,7 +151,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
           child: Column(
             children: [
-              // 1. Transaction Type Selector Pills (Dépense / Revenu)
+              // 1. Transaction Type Selector Pills
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
@@ -430,12 +437,10 @@ class _AddExpensePageState extends State<AddExpensePage> {
                     borderRadius: BorderRadius.circular(28),
                   ),
                 ),
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                        isExpenseMode ? "Enregistrer la dépense" : "Enregistrer le revenu",
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                child: Text(
+                  isExpenseMode ? "Enregistrer la dépense" : "Enregistrer le revenu",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
 
               const SizedBox(height: 20),
