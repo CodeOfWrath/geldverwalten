@@ -26,13 +26,13 @@ class ProjetRepositoryImpl implements ProjetRepository {
   }
 
   @override
-  Future<dynamic> createProjet(String nomProjet) async {
+  Future<dynamic> createProjet(String nomProjet, {int montantCible = 100000}) async {
     final newModel = ProjetModel(
       id: DateTime.now().millisecondsSinceEpoch,
       idUser: 1,
       statut: 1,
       nomProjet: nomProjet,
-      montantCible: 100000,
+      montantCible: montantCible > 0 ? montantCible : 100000,
       montantActuel: 0,
     );
 

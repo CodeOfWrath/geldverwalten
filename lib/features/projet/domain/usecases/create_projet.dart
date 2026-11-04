@@ -5,7 +5,7 @@ class CreateProjetUseCase {
 
   CreateProjetUseCase(this.repository);
 
-  Future<dynamic> call(String nomProjet) async {
-    return await repository.createProjet(nomProjet);
+  Future<dynamic> call(String nomProjet, {int montantCible = 100000}) async {
+    return await repository.createProjet(nomProjet, montantCible: montantCible);
   }
 }

@@ -49,8 +49,11 @@ class _ReportsPageState extends State<ReportsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final subtextColor = textColor.withValues(alpha: 0.7);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text("Rapports"),
         automaticallyImplyLeading: false,
@@ -83,9 +86,9 @@ class _ReportsPageState extends State<ReportsPage> {
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
@@ -102,7 +105,7 @@ class _ReportsPageState extends State<ReportsPage> {
                               "Dépenses (-)",
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: isExpenseMode ? Colors.white : AppColors.textSecondary,
+                                color: isExpenseMode ? Colors.white : subtextColor,
                                 fontWeight: isExpenseMode ? FontWeight.bold : FontWeight.w500,
                               ),
                             ),
@@ -122,7 +125,7 @@ class _ReportsPageState extends State<ReportsPage> {
                               "Revenus (+)",
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: !isExpenseMode ? Colors.white : AppColors.textSecondary,
+                                color: !isExpenseMode ? Colors.white : subtextColor,
                                 fontWeight: !isExpenseMode ? FontWeight.bold : FontWeight.w500,
                               ),
                             ),
@@ -139,17 +142,19 @@ class _ReportsPageState extends State<ReportsPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Période du rapport", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      Text("Période du rapport", style: TextStyle(color: subtextColor, fontSize: 13)),
                       DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: selectedMonth,
+                          dropdownColor: cardBg,
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                           items: ["Ce mois-ci", "Mois dernier", "Année en cours"]
                               .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                               .toList(),
@@ -169,16 +174,16 @@ class _ReportsPageState extends State<ReportsPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         isExpenseMode ? "Total des dépenses (Sorties)" : "Total des revenus (Entrées)",
-                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                        style: TextStyle(fontSize: 13, color: subtextColor),
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -240,35 +245,35 @@ class _ReportsPageState extends State<ReportsPage> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         isExpenseMode ? "Historique des dépenses" : "Historique des revenus",
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor),
                       ),
                       const SizedBox(height: 16),
                       if (isExpenseMode && _sorties.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20.0),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20.0),
                           child: Center(
                             child: Text(
                               "Aucune dépense enregistrée.",
-                              style: TextStyle(color: AppColors.textSecondary),
+                              style: TextStyle(color: subtextColor),
                             ),
                           ),
                         )
                       else if (!isExpenseMode && _entrees.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20.0),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20.0),
                           child: Center(
                             child: Text(
                               "Aucun revenu enregistré.",
-                              style: TextStyle(color: AppColors.textSecondary),
+                              style: TextStyle(color: subtextColor),
                             ),
                           ),
                         )
@@ -281,6 +286,7 @@ class _ReportsPageState extends State<ReportsPage> {
                           itemBuilder: (context, index) {
                             final item = _sorties[index];
                             return _buildTransactionRow(
+                              context: context,
                               title: item.message,
                               date: item.date,
                               amount: "-${item.montant} FCFA",
@@ -298,6 +304,7 @@ class _ReportsPageState extends State<ReportsPage> {
                           itemBuilder: (context, index) {
                             final item = _entrees[index];
                             return _buildTransactionRow(
+                              context: context,
                               title: item.origine,
                               date: item.date,
                               amount: "+${item.montant} FCFA",
@@ -320,12 +327,16 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Widget _buildTransactionRow({
+    required BuildContext context,
     required String title,
     required String date,
     required String amount,
     required Color color,
     required IconData icon,
   }) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final subtextColor = textColor.withValues(alpha: 0.7);
+
     return Row(
       children: [
         Container(
@@ -341,8 +352,8 @@ class _ReportsPageState extends State<ReportsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              Text(date, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor)),
+              Text(date, style: TextStyle(color: subtextColor, fontSize: 12)),
             ],
           ),
         ),

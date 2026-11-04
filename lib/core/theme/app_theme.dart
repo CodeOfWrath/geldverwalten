@@ -8,11 +8,13 @@ class AppTheme {
       primaryColor: AppColors.primaryGreen,
       scaffoldBackgroundColor: AppColors.background,
       fontFamily: 'Poppins',
+      cardColor: Colors.white,
       colorScheme: const ColorScheme.light(
         primary: AppColors.primaryGreen,
         secondary: AppColors.yellowEnergy,
         error: AppColors.accentRed,
         surface: AppColors.cardBackground,
+        onSurface: AppColors.textPrimary,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -24,6 +26,10 @@ class AppTheme {
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -82,20 +88,23 @@ class AppTheme {
   }
 
   static ThemeData get darkTheme {
-    const darkBg = Color(0xFF0A1610);
-    const darkSurface = Color(0xFF13281E);
-    const darkBorder = Color(0xFF1E3A2B);
+    // Slightly lightened dark mode surfaces for enhanced readability
+    const darkBg = Color(0xFF14241C);
+    const darkSurface = Color(0xFF1E362A);
+    const darkBorder = Color(0xFF2C4A3A);
 
     return ThemeData(
       brightness: Brightness.dark,
       primaryColor: AppColors.primaryGreen,
       scaffoldBackgroundColor: darkBg,
+      cardColor: darkSurface,
       fontFamily: 'Poppins',
       colorScheme: const ColorScheme.dark(
         primary: AppColors.primaryGreen,
         secondary: AppColors.yellowEnergy,
         error: AppColors.accentRed,
         surface: darkSurface,
+        onSurface: Colors.white,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -107,6 +116,10 @@ class AppTheme {
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: darkSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

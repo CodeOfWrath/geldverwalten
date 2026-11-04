@@ -97,7 +97,6 @@ class _AccueilTabState extends State<AccueilTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadData,
@@ -109,12 +108,12 @@ class _AccueilTabState extends State<AccueilTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 1. Header (Avatar, Greeting & Notification Bell)
-                _buildTopHeader(),
+                _buildTopHeader(context),
 
                 const SizedBox(height: 20),
 
                 // 2. Offline Sync Callout Banner if Guest
-                if (_currentUser.isGuest) _buildGuestBanner(),
+                if (_currentUser.isGuest) _buildGuestBanner(context),
 
                 // 3. Main Emerald Card ("Dépenses ce mois-ci")
                 _buildMainExpenseCard(),
@@ -122,17 +121,17 @@ class _AccueilTabState extends State<AccueilTab> {
                 const SizedBox(height: 24),
 
                 // 4. Period Filter Selector Pills
-                _buildPeriodSelector(),
+                _buildPeriodSelector(context),
 
                 const SizedBox(height: 20),
 
                 // 5. Line Chart Card
-                _buildLineChartCard(),
+                _buildLineChartCard(context),
 
                 const SizedBox(height: 24),
 
                 // 6. Category Breakdown & Budget Limits
-                _buildCategoryBreakdownSection(),
+                _buildCategoryBreakdownSection(context),
 
                 const SizedBox(height: 24),
               ],
@@ -143,7 +142,10 @@ class _AccueilTabState extends State<AccueilTab> {
     );
   }
 
-  Widget _buildTopHeader() {
+  Widget _buildTopHeader(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final subtextColor = textColor.withValues(alpha: 0.7);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -163,18 +165,18 @@ class _AccueilTabState extends State<AccueilTab> {
               children: [
                 Text(
                   "Bonjour ${_currentUser.pseudo} 👋",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   "Voici un aperçu de vos dépenses",
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color: subtextColor,
                   ),
                 ),
               ],
@@ -183,9 +185,9 @@ class _AccueilTabState extends State<AccueilTab> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
           ),
           child: IconButton(
             icon: const Icon(Icons.notifications_active_rounded, color: AppColors.primaryGreen),
@@ -199,7 +201,7 @@ class _AccueilTabState extends State<AccueilTab> {
     );
   }
 
-  Widget _buildGuestBanner() {
+  Widget _buildGuestBanner(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
@@ -212,17 +214,24 @@ class _AccueilTabState extends State<AccueilTab> {
         children: [
           const Icon(Icons.cloud_off_rounded, color: AppColors.primaryGreen),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   "Mode Hors-ligne (Invité)",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
                 Text(
                   "Créer un compte pour sauvegarder et synchroniser vos données.",
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
                 ),
               ],
             ),
@@ -326,7 +335,7 @@ class _AccueilTabState extends State<AccueilTab> {
     );
   }
 
-  Widget _buildPeriodSelector() {
+  Widget _buildPeriodSelector(BuildContext context) {
     final periods = ["Jour", "Semaine", "Mois", "Événement"];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -341,16 +350,16 @@ class _AccueilTabState extends State<AccueilTab> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primaryGreen : Colors.white,
+              color: isSelected ? AppColors.primaryGreen : Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isSelected ? AppColors.primaryGreen : AppColors.border,
+                color: isSelected ? AppColors.primaryGreen : AppColors.border.withValues(alpha: 0.3),
               ),
             ),
             child: Text(
               period,
               style: TextStyle(
-                color: isSelected ? Colors.white : AppColors.textSecondary,
+                color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 fontSize: 13,
               ),
@@ -361,25 +370,29 @@ class _AccueilTabState extends State<AccueilTab> {
     );
   }
 
-  Widget _buildLineChartCard() {
+  Widget _buildLineChartCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 "Évolution des dépenses",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
-              Icon(Icons.show_chart, color: AppColors.primaryGreen),
+              const Icon(Icons.show_chart, color: AppColors.primaryGreen),
             ],
           ),
           const SizedBox(height: 20),
@@ -395,36 +408,39 @@ class _AccueilTabState extends State<AccueilTab> {
     );
   }
 
-  Widget _buildCategoryBreakdownSection() {
+  Widget _buildCategoryBreakdownSection(BuildContext context) {
     final totals = _categoryTotals;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "Limites de budget & Catégories",
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 16),
           if (_sorties.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.0),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: Center(
                 child: Text(
                   "Aucune dépense enregistrée.\nAppuyez sur '+' pour ajouter votre première dépense.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: 13,
+                  ),
                 ),
               ),
             )
@@ -432,10 +448,10 @@ class _AccueilTabState extends State<AccueilTab> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildBudgetProgressRow("Alimentation", totals["Alimentation"] ?? 0, AppColors.catAlimentation),
-                _buildBudgetProgressRow("Transport", totals["Transport"] ?? 0, AppColors.catTransport),
-                _buildBudgetProgressRow("Loisirs", totals["Loisirs"] ?? 0, AppColors.catLoisirs),
-                _buildBudgetProgressRow("Santé", totals["Santé"] ?? 0, AppColors.catSante),
+                _buildBudgetProgressRow(context, "Alimentation", totals["Alimentation"] ?? 0, AppColors.catAlimentation),
+                _buildBudgetProgressRow(context, "Transport", totals["Transport"] ?? 0, AppColors.catTransport),
+                _buildBudgetProgressRow(context, "Loisirs", totals["Loisirs"] ?? 0, AppColors.catLoisirs),
+                _buildBudgetProgressRow(context, "Santé", totals["Santé"] ?? 0, AppColors.catSante),
               ],
             ),
         ],
@@ -443,7 +459,7 @@ class _AccueilTabState extends State<AccueilTab> {
     );
   }
 
-  Widget _buildBudgetProgressRow(String category, int spent, Color color) {
+  Widget _buildBudgetProgressRow(BuildContext context, String category, int spent, Color color) {
     final limit = _categoryLimits[category] ?? 50000;
     final ratio = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
     Color barColor = AppColors.primaryGreen;
@@ -453,6 +469,8 @@ class _AccueilTabState extends State<AccueilTab> {
       barColor = Colors.orange;
     }
 
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
@@ -461,8 +479,8 @@ class _AccueilTabState extends State<AccueilTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(category, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              Text("$spent / $limit $_currencySymbol", style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              Text(category, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+              Text("$spent / $limit $_currencySymbol", style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.7))),
             ],
           ),
           const SizedBox(height: 6),

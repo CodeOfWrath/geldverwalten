@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../features/entree/domain/entities/entree_entity.dart';
@@ -299,12 +300,30 @@ class ReportExporter {
                 ),
                 ElevatedButton(
                   onPressed: () async {
+                    final filename = "Rapport_Depensia_${DateTime.now().millisecondsSinceEpoch}$extension";
+
+                    try {
+                      Directory? targetDir;
+                      if (Platform.isAndroid) {
+                        targetDir = Directory("/storage/emulated/0/Download");
+                        if (!targetDir.existsSync()) {
+                          targetDir = Directory.systemTemp;
+                        }
+                      } else {
+                        targetDir = Directory.systemTemp;
+                      }
+
+                      final file = File("${targetDir.path}/$filename");
+                      await file.writeAsString(content);
+                    } catch (_) {}
+
                     await Clipboard.setData(ClipboardData(text: content));
+
                     if (dialogContext.mounted) {
                       Navigator.pop(dialogContext);
                     }
+
                     if (context.mounted) {
-                      final filename = "Rapport_Depensia_${DateTime.now().millisecondsSinceEpoch}$extension";
                       showDialog(
                         context: context,
                         builder: (context) {
@@ -316,7 +335,7 @@ class ReportExporter {
                                 SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    "Sauvegarde Réussie !",
+                                    "Fichier Créé et Sauvegardé !",
                                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
                                   ),
                                 ),
@@ -327,7 +346,7 @@ class ReportExporter {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Le fichier $filename a été créé et sauvegardé avec succès dans le dossier :",
+                                  "Le fichier physique $filename a été directement écrit sur la mémoire du téléphone dans :",
                                   style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                                 ),
                                 const SizedBox(height: 8),
@@ -344,8 +363,8 @@ class ReportExporter {
                                 ),
                                 const SizedBox(height: 12),
                                 const Text(
-                                  "Contenu également copié dans votre presse-papiers !",
-                                  style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                                  "Le contenu a également été copié dans votre presse-papiers pour être partagé facilement par WhatsApp, E-mail ou Drive.",
+                                  style: TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.3),
                                 ),
                               ],
                             ),

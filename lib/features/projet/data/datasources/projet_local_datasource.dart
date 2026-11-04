@@ -7,6 +7,8 @@ abstract class ProjetLocalDataSource {
   Future<void> cacheProjets(List<ProjetModel> list);
   Future<void> addLocalProjet(ProjetModel projet);
   Future<void> updateProjetMontant(int idProjet, int deltaMontant);
+  Future<void> deleteLocalProjet(int idProjet);
+  Future<void> toggleArchiveProjet(int idProjet);
 }
 
 class ProjetLocalDataSourceImpl implements ProjetLocalDataSource {
@@ -51,6 +53,34 @@ class ProjetLocalDataSourceImpl implements ProjetLocalDataSource {
           nomProjet: current.nomProjet,
           montantCible: current.montantCible,
           montantActuel: (current.montantActuel + deltaMontant).clamp(0, current.montantCible * 10),
+        );
+        break;
+      }
+    }
+    await cacheProjets(list);
+  }
+
+  @override
+  Future<void> deleteLocalProjet(int idProjet) async {
+    final list = await getCachedProjets();
+    list.removeWhere((p) => p.id == idProjet);
+    await cacheProjets(list);
+  }
+
+  @override
+  Future<void> toggleArchiveProjet(int idProjet) async {
+    final list = await getCachedProjets();
+    for (int i = 0; i < list.length; i++) {
+      if (list[i].id == idProjet) {
+        final current = list[i];
+        final newStatut = current.statut == 1 ? 0 : 1; // 1 = Actif, 0 = Archivé
+        list[i] = ProjetModel(
+          id: current.id,
+          idUser: current.idUser,
+          statut: newStatut,
+          nomProjet: current.nomProjet,
+          montantCible: current.montantCible,
+          montantActuel: current.montantActuel,
         );
         break;
       }

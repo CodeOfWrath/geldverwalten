@@ -22,6 +22,7 @@ class OnboardingPage extends StatelessWidget {
           builder: (context, setState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              backgroundColor: Colors.white,
               title: const Text(
                 "Bienvenue sur Dépensia 👋",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
@@ -39,10 +40,27 @@ class OnboardingPage extends StatelessWidget {
                     TextField(
                       controller: pseudoController,
                       autofocus: true,
-                      decoration: const InputDecoration(
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white,
                         labelText: "Votre pseudo",
+                        labelStyle: const TextStyle(color: AppColors.textSecondary),
                         hintText: "ex: Micaelle, Alex...",
-                        prefixIcon: Icon(Icons.person_outline, color: AppColors.primaryGreen),
+                        hintStyle: const TextStyle(color: AppColors.textLight),
+                        prefixIcon: const Icon(Icons.person_outline, color: AppColors.primaryGreen),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -61,11 +79,16 @@ class OnboardingPage extends StatelessWidget {
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: selectedCurrency,
+                          dropdownColor: Colors.white,
                           isExpanded: true,
+                          style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
                           items: CurrencyManager.availableCurrencies.map((c) {
                             return DropdownMenuItem<String>(
                               value: c["symbol"],
-                              child: Text("${c["name"]} (${c["symbol"]})"),
+                              child: Text(
+                                "${c["name"]} (${c["symbol"]})",
+                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                              ),
                             );
                           }).toList(),
                           onChanged: (val) {

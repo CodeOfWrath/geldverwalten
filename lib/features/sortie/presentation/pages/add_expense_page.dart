@@ -116,15 +116,15 @@ class _AddExpensePageState extends State<AddExpensePage> {
       final raison = comment.isNotEmpty ? "$comment ($categoryLabel)" : categoryLabel;
 
       if (isExpenseMode) {
-        await sl.addSortieUseCase(raison, amountText, selectedProjet?.id ?? 1);
+        await sl.addSortieUseCase(raison, amountText, 1);
       } else {
         await sl.addEntreeUseCase(raison, intAmount);
-      }
 
-      // If a project/goal is linked to this transaction, update its montantActuel
-      if (selectedProjet != null) {
-        await sl.projetLocalDataSource.updateProjetMontant(selectedProjet!.id, intAmount);
-        dataChangeNotifier.notifyDataChanged();
+        // If an income is linked to a project/goal, increment its montantActuel
+        if (selectedProjet != null) {
+          await sl.projetLocalDataSource.updateProjetMontant(selectedProjet!.id, intAmount);
+          dataChangeNotifier.notifyDataChanged();
+        }
       }
 
       if (isRecurring) {
@@ -175,9 +175,11 @@ class _AddExpensePageState extends State<AddExpensePage> {
   @override
   Widget build(BuildContext context) {
     final currentCategories = isExpenseMode ? expenseCategories : incomeCategories;
+    final cardBg = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final subtextColor = textColor.withValues(alpha: 0.7);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(isExpenseMode ? "Ajouter une dépense" : "Ajouter une entrée"),
         leading: IconButton(
@@ -194,9 +196,9 @@ class _AddExpensePageState extends State<AddExpensePage> {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -206,6 +208,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
                           setState(() {
                             isExpenseMode = true;
                             selectedCategory = "Alimentation";
+                            selectedProjet = null;
                           });
                         },
                         child: Container(
@@ -219,14 +222,14 @@ class _AddExpensePageState extends State<AddExpensePage> {
                             children: [
                               Icon(
                                 Icons.remove_circle_outline_rounded,
-                                color: isExpenseMode ? Colors.white : AppColors.textSecondary,
+                                color: isExpenseMode ? Colors.white : subtextColor,
                                 size: 18,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 "Dépense (-)",
                                 style: TextStyle(
-                                  color: isExpenseMode ? Colors.white : AppColors.textSecondary,
+                                  color: isExpenseMode ? Colors.white : subtextColor,
                                   fontWeight: isExpenseMode ? FontWeight.bold : FontWeight.w500,
                                 ),
                               ),
@@ -254,14 +257,14 @@ class _AddExpensePageState extends State<AddExpensePage> {
                             children: [
                               Icon(
                                 Icons.add_circle_outline_rounded,
-                                color: !isExpenseMode ? Colors.white : AppColors.textSecondary,
+                                color: !isExpenseMode ? Colors.white : subtextColor,
                                 size: 18,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 "Revenu (+)",
                                 style: TextStyle(
-                                  color: !isExpenseMode ? Colors.white : AppColors.textSecondary,
+                                  color: !isExpenseMode ? Colors.white : subtextColor,
                                   fontWeight: !isExpenseMode ? FontWeight.bold : FontWeight.w500,
                                 ),
                               ),
@@ -281,15 +284,15 @@ class _AddExpensePageState extends State<AddExpensePage> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   children: [
                     Text(
                       isExpenseMode ? "Montant de la dépense" : "Montant du revenu",
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                      style: TextStyle(fontSize: 13, color: subtextColor),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -357,10 +360,10 @@ class _AddExpensePageState extends State<AddExpensePage> {
                     },
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isSelected ? catColor.withValues(alpha: 0.12) : Colors.white,
+                        color: isSelected ? catColor.withValues(alpha: 0.12) : cardBg,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isSelected ? catColor : AppColors.border,
+                          color: isSelected ? catColor : AppColors.border.withValues(alpha: 0.3),
                           width: isSelected ? 2 : 1,
                         ),
                       ),
@@ -385,7 +388,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                              color: isSelected ? catColor : AppColors.textSecondary,
+                              color: isSelected ? catColor : subtextColor,
                             ),
                           ),
                         ],
@@ -401,6 +404,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
               if (selectedCategory == "Autre") ...[
                 TextField(
                   controller: customNatureController,
+                  style: TextStyle(color: textColor),
                   decoration: InputDecoration(
                     labelText: isExpenseMode
                         ? "Préciser la nature de la dépense"
@@ -412,52 +416,55 @@ class _AddExpensePageState extends State<AddExpensePage> {
                 const SizedBox(height: 16),
               ],
 
-              // 5. Select Linked Project / Goal Dropdown Section
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.flag_rounded, color: AppColors.primaryGreen, size: 20),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<ProjetEntity?>(
-                          value: selectedProjet,
-                          hint: const Text(
-                            "Associer à un objectif (Optionnel)",
-                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                          ),
-                          isExpanded: true,
-                          items: [
-                            const DropdownMenuItem<ProjetEntity?>(
-                              value: null,
-                              child: Text("Aucun projet lié"),
+              // 5. Select Linked Project / Goal Dropdown Section (Displayed ONLY in Revenu Mode)
+              if (!isExpenseMode) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.flag_rounded, color: AppColors.primaryGreen, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<ProjetEntity?>(
+                            value: selectedProjet,
+                            dropdownColor: cardBg,
+                            style: TextStyle(color: textColor, fontSize: 13),
+                            hint: Text(
+                              "Associer à un objectif d'épargne (Optionnel)",
+                              style: TextStyle(fontSize: 13, color: subtextColor),
                             ),
-                            ..._activeProjets.map((p) {
-                              return DropdownMenuItem<ProjetEntity?>(
-                                value: p,
-                                child: Text("${p.nomProjet} (${p.montantActuel} / ${p.montantCible} FCFA)"),
-                              );
-                            }),
-                          ],
-                          onChanged: (val) {
-                            setState(() {
-                              selectedProjet = val;
-                            });
-                          },
+                            isExpanded: true,
+                            items: [
+                              DropdownMenuItem<ProjetEntity?>(
+                                value: null,
+                                child: Text("Aucun objectif lié", style: TextStyle(color: textColor)),
+                              ),
+                              ..._activeProjets.map((p) {
+                                return DropdownMenuItem<ProjetEntity?>(
+                                  value: p,
+                                  child: Text("${p.nomProjet} (${p.montantActuel} / ${p.montantCible} FCFA)", style: TextStyle(color: textColor)),
+                                );
+                              }),
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                selectedProjet = val;
+                              });
+                            },
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
 
               // 6. Date Selector Card
               GestureDetector(
@@ -477,23 +484,23 @@ class _AddExpensePageState extends State<AddExpensePage> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.calendar_today_rounded, size: 20, color: AppColors.primaryGreen),
-                          SizedBox(width: 12),
-                          Text("Date", style: TextStyle(fontWeight: FontWeight.w500)),
+                          const Icon(Icons.calendar_today_rounded, size: 20, color: AppColors.primaryGreen),
+                          const SizedBox(width: 12),
+                          Text("Date", style: TextStyle(fontWeight: FontWeight.w500, color: textColor)),
                         ],
                       ),
                       Text(
                         "${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}",
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
                       ),
                     ],
                   ),
@@ -506,18 +513,18 @@ class _AddExpensePageState extends State<AddExpensePage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.repeat_rounded, color: AppColors.primaryGreen, size: 20),
-                        SizedBox(width: 12),
-                        Text("Activer la récurrence", style: TextStyle(fontWeight: FontWeight.w500)),
+                        const Icon(Icons.repeat_rounded, color: AppColors.primaryGreen, size: 20),
+                        const SizedBox(width: 12),
+                        Text("Activer la récurrence", style: TextStyle(fontWeight: FontWeight.w500, color: textColor)),
                       ],
                     ),
                     Switch(
@@ -538,16 +545,18 @@ class _AddExpensePageState extends State<AddExpensePage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: recurringFrequency,
+                      dropdownColor: cardBg,
+                      style: TextStyle(color: textColor),
                       isExpanded: true,
                       items: ["Hebdomadaire", "Mensuel", "Annuel"]
-                          .map((f) => DropdownMenuItem(value: f, child: Text("Fréquence : $f")))
+                          .map((f) => DropdownMenuItem(value: f, child: Text("Fréquence : $f", style: TextStyle(color: textColor))))
                           .toList(),
                       onChanged: (val) {
                         if (val != null) setState(() => recurringFrequency = val);
@@ -562,6 +571,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
               // 8. Optional Comment Field
               TextField(
                 controller: commentController,
+                style: TextStyle(color: textColor),
                 decoration: const InputDecoration(
                   labelText: "Commentaire (optionnel)",
                   hintText: "ex: Détails supplémentaires...",

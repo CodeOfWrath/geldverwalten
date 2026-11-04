@@ -84,18 +84,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _showThemeSelectorDialog() async {
     final current = themeManager.themeMode;
+    final cardBg = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
     await showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Thème d'affichage"),
+          backgroundColor: cardBg,
+          title: Text("Thème d'affichage", style: TextStyle(color: textColor)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: const Text("Thème Clair ☀️"),
+                title: Text("Thème Clair ☀️", style: TextStyle(color: textColor)),
                 trailing: current == ThemeMode.light ? const Icon(Icons.check_circle, color: AppColors.primaryGreen) : null,
                 onTap: () {
                   themeManager.setThemeMode(ThemeMode.light);
@@ -103,7 +106,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 },
               ),
               ListTile(
-                title: const Text("Thème Sombre 🌙"),
+                title: Text("Thème Sombre 🌙", style: TextStyle(color: textColor)),
                 trailing: current == ThemeMode.dark ? const Icon(Icons.check_circle, color: AppColors.primaryGreen) : null,
                 onTap: () {
                   themeManager.setThemeMode(ThemeMode.dark);
@@ -111,7 +114,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 },
               ),
               ListTile(
-                title: const Text("Système (Automatique) 📱"),
+                title: Text("Système (Automatique) 📱", style: TextStyle(color: textColor)),
                 trailing: current == ThemeMode.system ? const Icon(Icons.check_circle, color: AppColors.primaryGreen) : null,
                 onTap: () {
                   themeManager.setThemeMode(ThemeMode.system);
@@ -127,6 +130,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _showCurrencySelectorDialog() async {
     String selected = _currentCurrency;
+    final cardBg = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
     await showDialog(
       context: context,
@@ -135,14 +140,15 @@ class _ProfilePageState extends State<ProfilePage> {
           builder: (dialogContext, setStateDialog) {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text("Devise de l'application"),
+              backgroundColor: cardBg,
+              title: Text("Devise de l'application", style: TextStyle(color: textColor)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: CurrencyManager.availableCurrencies.map((c) {
                     final isSelected = selected == c["symbol"];
                     return ListTile(
-                      title: Text("${c["name"]} (${c["symbol"]})"),
+                      title: Text("${c["name"]} (${c["symbol"]})", style: TextStyle(color: textColor)),
                       trailing: isSelected ? const Icon(Icons.check_circle, color: AppColors.primaryGreen) : null,
                       onTap: () {
                         setStateDialog(() {
@@ -200,12 +206,16 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (!mounted) return;
 
+    final cardBg = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     await showDialog(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Limites de dépenses par catégorie"),
+          backgroundColor: cardBg,
+          title: Text("Limites de dépenses par catégorie", style: TextStyle(color: textColor)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -215,6 +225,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: TextField(
                     controller: entry.value,
                     keyboardType: TextInputType.number,
+                    style: TextStyle(color: textColor),
                     decoration: InputDecoration(
                       labelText: "${entry.key} ($_currentCurrency)",
                       suffixText: _currentCurrency,
@@ -261,8 +272,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final subtextColor = textColor.withValues(alpha: 0.7);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text("Paramètres"),
         automaticallyImplyLeading: false,
@@ -276,9 +290,9 @@ class _ProfilePageState extends State<ProfilePage> {
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -294,16 +308,16 @@ class _ProfilePageState extends State<ProfilePage> {
                         children: [
                           Text(
                             _user.pseudo,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
+                              color: textColor,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             _user.email,
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(fontSize: 12, color: subtextColor),
                           ),
                           const SizedBox(height: 6),
                           Container(
@@ -336,18 +350,18 @@ class _ProfilePageState extends State<ProfilePage> {
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                 ),
                 child: Material(
                   color: Colors.transparent,
                   child: Column(
                     children: [
                       ListTile(
-                        leading: const Icon(Icons.notifications_active_rounded, color: AppColors.textPrimary),
-                        title: const Text("Rappel quotidien (20:00)", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-                        subtitle: const Text("Rappel pour renseigner vos dépenses", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        leading: Icon(Icons.notifications_active_rounded, color: textColor),
+                        title: Text("Rappel quotidien (20:00)", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor)),
+                        subtitle: Text("Rappel pour renseigner vos dépenses", style: TextStyle(fontSize: 11, color: subtextColor)),
                         trailing: Switch(
                           value: notificationsEnabled,
                           activeThumbColor: AppColors.primaryGreen,
@@ -360,9 +374,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       const Divider(height: 1, indent: 16, endIndent: 16),
 
                       ListTile(
-                        leading: const Icon(Icons.lock_outline_rounded, color: AppColors.textPrimary),
-                        title: const Text("Sécurité Code PIN", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-                        subtitle: const Text("Exiger un code PIN à l'accès", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        leading: Icon(Icons.lock_outline_rounded, color: textColor),
+                        title: Text("Sécurité Code PIN", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor)),
+                        subtitle: Text("Exiger un code PIN à l'accès", style: TextStyle(fontSize: 11, color: subtextColor)),
                         trailing: Switch(
                           value: pinSecurityEnabled,
                           activeThumbColor: AppColors.primaryGreen,
@@ -372,6 +386,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       const Divider(height: 1, indent: 16, endIndent: 16),
 
                       _buildSettingsTile(
+                        context: context,
                         icon: Icons.monetization_on_outlined,
                         title: "Devise de l'application",
                         trailingText: _currentCurrency,
@@ -380,6 +395,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       const Divider(height: 1, indent: 16, endIndent: 16),
 
                       _buildSettingsTile(
+                        context: context,
                         icon: Icons.tune_rounded,
                         title: "Limites de dépenses par catégorie",
                         onTap: _showBudgetLimitsDialog,
@@ -387,6 +403,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       const Divider(height: 1, indent: 16, endIndent: 16),
 
                       _buildSettingsTile(
+                        context: context,
                         icon: Icons.contrast_rounded,
                         title: "Thème",
                         trailingText: themeManager.themeMode == ThemeMode.dark
@@ -399,6 +416,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       const Divider(height: 1, indent: 16, endIndent: 16),
 
                       _buildSettingsTile(
+                        context: context,
                         icon: Icons.info_outline_rounded,
                         title: "À propos de Dépensia",
                         onTap: () {
@@ -471,23 +489,27 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildSettingsTile({
+    required BuildContext context,
     required IconData icon,
     required String title,
     String? trailingText,
     required VoidCallback onTap,
   }) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final subtextColor = textColor.withValues(alpha: 0.7);
+
     return Material(
       color: Colors.transparent,
       child: ListTile(
-        leading: Icon(icon, color: AppColors.textPrimary),
-        title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+        leading: Icon(icon, color: textColor),
+        title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor)),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (trailingText != null)
-              Text(trailingText, style: const TextStyle(color: AppColors.textLight, fontSize: 13, fontWeight: FontWeight.bold)),
+              Text(trailingText, style: const TextStyle(color: AppColors.primaryGreen, fontSize: 13, fontWeight: FontWeight.bold)),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
+            Icon(Icons.chevron_right_rounded, color: subtextColor),
           ],
         ),
         onTap: onTap,

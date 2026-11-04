@@ -16,6 +16,7 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
   late Future<List<ProjetEntity>> _projetsFuture;
   final TextEditingController _nomProjetController = TextEditingController();
   final TextEditingController _montantCibleController = TextEditingController();
+  bool _showArchived = false;
 
   @override
   void initState() {
@@ -36,8 +37,75 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
     });
   }
 
+  Future<void> _confirmDeleteProjet(ProjetEntity projet) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.delete_forever_rounded, color: AppColors.accentRed, size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text("Supprimer le projet", style: TextStyle(fontSize: 18, color: AppColors.accentRed)),
+              ),
+            ],
+          ),
+          content: Text("Voulez-vous vraiment supprimer définitivement le projet '${projet.nomProjet}' ?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Annuler"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentRed,
+                minimumSize: const Size(100, 42),
+              ),
+              child: const Text("Supprimer"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await sl.projetLocalDataSource.deleteLocalProjet(projet.id);
+      dataChangeNotifier.notifyDataChanged();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Projet '${projet.nomProjet}' supprimé !"),
+            backgroundColor: AppColors.accentRed,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleArchiveProjet(ProjetEntity projet) async {
+    await sl.projetLocalDataSource.toggleArchiveProjet(projet.id);
+    dataChangeNotifier.notifyDataChanged();
+    if (mounted) {
+      final isArchivedNow = projet.statut == 1;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isArchivedNow
+                ? "Projet '${projet.nomProjet}' archivé avec succès !"
+                : "Projet '${projet.nomProjet}' restauré parmi les objectifs actifs !",
+          ),
+          backgroundColor: AppColors.primaryGreen,
+        ),
+      );
+    }
+  }
+
   Future<void> _showCreateDialog() async {
     bool isSaving = false;
+    bool hasNameError = false;
 
     return showDialog(
       context: context,
@@ -50,13 +118,35 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
               title: const Text("Créer un projet / objectif"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
                     controller: _nomProjetController,
                     enabled: !isSaving,
-                    decoration: const InputDecoration(
-                      labelText: "Nom du projet",
+                    onChanged: (val) {
+                      if (hasNameError && val.trim().isNotEmpty) {
+                        setDialogState(() {
+                          hasNameError = false;
+                        });
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: "Nom du projet *",
                       hintText: "ex: Achat Équipement, Epargne...",
+                      labelStyle: TextStyle(color: hasNameError ? AppColors.accentRed : null),
+                      errorText: hasNameError ? "Veuillez entrer le nom du projet" : null,
+                      focusedBorder: hasNameError
+                          ? OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: AppColors.accentRed, width: 2),
+                            )
+                          : null,
+                      enabledBorder: hasNameError
+                          ? OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: AppColors.accentRed, width: 2),
+                            )
+                          : null,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -74,7 +164,11 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
               actions: [
                 if (!isSaving)
                   TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
+                    onPressed: () {
+                      _nomProjetController.clear();
+                      _montantCibleController.clear();
+                      Navigator.pop(dialogContext);
+                    },
                     child: const Text("Annuler"),
                   ),
                 ElevatedButton(
@@ -82,28 +176,35 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                       ? null
                       : () async {
                           final nom = _nomProjetController.text.trim();
-                          if (nom.isNotEmpty) {
+                          if (nom.isEmpty) {
                             setDialogState(() {
-                              isSaving = true;
+                              hasNameError = true;
                             });
+                            return;
+                          }
 
-                            await sl.createProjetUseCase(nom);
+                          final targetAmount = int.tryParse(_montantCibleController.text.trim()) ?? 100000;
 
-                            _nomProjetController.clear();
-                            _montantCibleController.clear();
+                          setDialogState(() {
+                            isSaving = true;
+                          });
 
-                            if (dialogContext.mounted) {
-                              Navigator.pop(dialogContext);
-                            }
+                          await sl.createProjetUseCase(nom, montantCible: targetAmount);
 
-                            if (mounted) {
-                              await DbDialogs.showSuccess(
-                                this.context,
-                                title: "Projet créé avec succès !",
-                                message: "Le projet '$nom' a été correctement enregistré dans la base de données locale.",
-                              );
-                              _loadProjets();
-                            }
+                          _nomProjetController.clear();
+                          _montantCibleController.clear();
+
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+
+                          if (mounted) {
+                            await DbDialogs.showSuccess(
+                              this.context,
+                              title: "Projet créé avec succès !",
+                              message: "Le projet '$nom' ($targetAmount FCFA) a été correctement enregistré dans la base de données locale.",
+                            );
+                            _loadProjets();
                           }
                         },
                   style: ElevatedButton.styleFrom(
@@ -128,8 +229,11 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final subtextColor = textColor.withValues(alpha: 0.7);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text("Mes objectifs"),
         automaticallyImplyLeading: false,
@@ -154,9 +258,12 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final projets = snapshot.data ?? [];
-                  final totalCible = projets.fold<int>(0, (sum, item) => sum + item.montantCible);
-                  final totalActuel = projets.fold<int>(0, (sum, item) => sum + item.montantActuel);
+                  final allProjets = snapshot.data ?? [];
+                  final activeProjets = allProjets.where((p) => p.statut == 1).toList();
+                  final archivedProjets = allProjets.where((p) => p.statut == 0).toList();
+
+                  final totalCible = activeProjets.fold<int>(0, (sum, item) => sum + item.montantCible);
+                  final totalActuel = activeProjets.fold<int>(0, (sum, item) => sum + item.montantActuel);
                   final double overallProgress = totalCible > 0 ? (totalActuel / totalCible).clamp(0.0, 1.0) : 0.0;
 
                   return Column(
@@ -167,9 +274,9 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(22),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: cardBg,
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.04),
@@ -198,10 +305,10 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                                   children: [
                                     Text(
                                       "${(overallProgress * 100).toInt()}%",
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 28,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.textPrimary,
+                                        color: textColor,
                                       ),
                                     ),
                                   ],
@@ -209,9 +316,9 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                               ],
                             ),
                             const SizedBox(height: 16),
-                            const Text(
+                            Text(
                               "Progression globale des objectifs",
-                              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                              style: TextStyle(fontSize: 13, color: subtextColor),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -232,12 +339,12 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            "Mes objectifs actifs",
+                          Text(
+                            "Mes objectifs actifs (${activeProjets.length})",
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
+                              color: textColor,
                             ),
                           ),
                           TextButton(
@@ -252,103 +359,84 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
 
                       const SizedBox(height: 12),
 
-                      if (projets.isEmpty)
+                      if (activeProjets.isEmpty)
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: cardBg,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border),
+                            border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
                           ),
-                          child: const Text(
-                            "Aucun objectif actif pour le moment. Cliquez sur '+ Nouveau' pour créer votre premier projet d'épargne !",
+                          child: Text(
+                            "Aucun objectif actif. Cliquez sur '+ Nouveau' pour créer votre premier projet d'épargne !",
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.textSecondary),
+                            style: TextStyle(color: subtextColor),
                           ),
                         )
                       else
                         ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: projets.length,
+                          itemCount: activeProjets.length,
                           itemBuilder: (context, index) {
-                            final p = projets[index];
-                            final progress = p.progressPercentage;
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Icon(
-                                          Icons.flag_rounded,
-                                          color: AppColors.primaryGreen,
-                                          size: 24,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              p.nomProjet,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              "${p.montantActuel} / ${p.montantCible} FCFA",
-                                              style: const TextStyle(
-                                                color: AppColors.textSecondary,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Text(
-                                        "${(progress * 100).toInt()}%",
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                          color: AppColors.primaryGreen,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: LinearProgressIndicator(
-                                      value: progress,
-                                      minHeight: 8,
-                                      backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
-                                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
+                            final p = activeProjets[index];
+                            return _buildProjectCard(p, isArchived: false);
                           },
                         ),
+
+                      const SizedBox(height: 24),
+
+                      // Archived Projects Section Toggle
+                      if (archivedProjets.isNotEmpty) ...[
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _showArchived = !_showArchived;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.archive_outlined, color: subtextColor, size: 20),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      "Projets archivés (${archivedProjets.length})",
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
+                                    ),
+                                  ],
+                                ),
+                                Icon(
+                                  _showArchived ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                                  color: subtextColor,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        if (_showArchived) ...[
+                          const SizedBox(height: 12),
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: archivedProjets.length,
+                            itemBuilder: (context, index) {
+                              final p = archivedProjets[index];
+                              return _buildProjectCard(p, isArchived: true);
+                            },
+                          ),
+                        ],
+                      ],
                     ],
                   );
                 },
@@ -358,6 +446,119 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProjectCard(ProjetEntity p, {required bool isArchived}) {
+    final progress = p.progressPercentage;
+    final cardBg = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final subtextColor = textColor.withValues(alpha: 0.7);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (isArchived ? subtextColor : AppColors.primaryGreen).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isArchived ? Icons.archive_rounded : Icons.flag_rounded,
+                  color: isArchived ? subtextColor : AppColors.primaryGreen,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.nomProjet,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isArchived ? subtextColor : textColor,
+                        decoration: isArchived ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "${p.montantActuel} / ${p.montantCible} FCFA",
+                      style: TextStyle(
+                        color: subtextColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                "${(progress * 100).toInt()}%",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: isArchived ? subtextColor : AppColors.primaryGreen,
+                ),
+              ),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert_rounded, color: subtextColor),
+                onSelected: (value) {
+                  if (value == "archive") {
+                    _toggleArchiveProjet(p);
+                  } else if (value == "delete") {
+                    _confirmDeleteProjet(p);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: "archive",
+                    child: Row(
+                      children: [
+                        Icon(isArchived ? Icons.unarchive_rounded : Icons.archive_outlined, color: AppColors.primaryGreen, size: 20),
+                        const SizedBox(width: 10),
+                        Text(isArchived ? "Restaurer le projet" : "Archiver le projet", style: TextStyle(color: textColor)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: "delete",
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline_rounded, color: AppColors.accentRed, size: 20),
+                        SizedBox(width: 10),
+                        Text("Supprimer le projet", style: TextStyle(color: AppColors.accentRed)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: (isArchived ? subtextColor : AppColors.primaryGreen).withValues(alpha: 0.15),
+              valueColor: AlwaysStoppedAnimation<Color>(isArchived ? subtextColor : AppColors.primaryGreen),
+            ),
+          ),
+        ],
       ),
     );
   }
