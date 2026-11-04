@@ -10,13 +10,13 @@ abstract class SortieLocalDataSource {
 
 class SortieLocalDataSourceImpl implements SortieLocalDataSource {
   final SharedPreferences sharedPreferences;
-  static const String CACHED_SORTIES_KEY = 'CACHED_SORTIES_KEY';
+  static const String cachedSortiesKey = 'CACHED_SORTIES_KEY';
 
   SortieLocalDataSourceImpl({required this.sharedPreferences});
 
   @override
   Future<List<SortieModel>> getCachedSorties() async {
-    final jsonString = sharedPreferences.getString(CACHED_SORTIES_KEY);
+    final jsonString = sharedPreferences.getString(cachedSortiesKey);
     if (jsonString != null) {
       final List<dynamic> jsonList = jsonDecode(jsonString);
       return jsonList.map((item) => SortieModel.fromJson(item)).toList();
@@ -27,7 +27,7 @@ class SortieLocalDataSourceImpl implements SortieLocalDataSource {
   @override
   Future<void> cacheSorties(List<SortieModel> list) async {
     final jsonString = jsonEncode(list.map((e) => e.toJson()).toList());
-    await sharedPreferences.setString(CACHED_SORTIES_KEY, jsonString);
+    await sharedPreferences.setString(cachedSortiesKey, jsonString);
   }
 
   @override

@@ -195,7 +195,7 @@ class _ReportsPageState extends State<ReportsPage> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: (isExpenseMode ? AppColors.accentRed : AppColors.primaryGreen).withOpacity(0.12),
+                              color: (isExpenseMode ? AppColors.accentRed : AppColors.primaryGreen).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -331,7 +331,7 @@ class _ReportsPageState extends State<ReportsPage> {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
+            color: color.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 20),

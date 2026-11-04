@@ -15,21 +15,21 @@ abstract class AuthLocalDataSource {
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   final SharedPreferences sharedPreferences;
 
-  static const String CACHED_USER_KEY = 'CACHED_USER_KEY';
-  static const String GUEST_MODE_KEY = 'GUEST_MODE_KEY';
-  static const String HAS_SEEN_ONBOARDING_KEY = 'HAS_SEEN_ONBOARDING_KEY';
+  static const String cachedUserKey = 'CACHED_USER_KEY';
+  static const String guestModeKey = 'GUEST_MODE_KEY';
+  static const String hasSeenOnboardingKey = 'HAS_SEEN_ONBOARDING_KEY';
 
   AuthLocalDataSourceImpl({required this.sharedPreferences});
 
   @override
   Future<void> cacheUser(UserModel user) async {
-    await sharedPreferences.setString(CACHED_USER_KEY, jsonEncode(user.toJson()));
-    await sharedPreferences.setBool(GUEST_MODE_KEY, user.isGuest);
+    await sharedPreferences.setString(cachedUserKey, jsonEncode(user.toJson()));
+    await sharedPreferences.setBool(guestModeKey, user.isGuest);
   }
 
   @override
   Future<UserModel?> getCachedUser() async {
-    final jsonString = sharedPreferences.getString(CACHED_USER_KEY);
+    final jsonString = sharedPreferences.getString(cachedUserKey);
     if (jsonString != null) {
       return UserModel.fromJson(jsonDecode(jsonString));
     }
@@ -38,13 +38,13 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   @override
   Future<void> clearUser() async {
-    await sharedPreferences.remove(CACHED_USER_KEY);
-    await sharedPreferences.remove(GUEST_MODE_KEY);
+    await sharedPreferences.remove(cachedUserKey);
+    await sharedPreferences.remove(guestModeKey);
   }
 
   @override
   Future<void> setGuestMode(bool isGuest, {String? pseudo}) async {
-    await sharedPreferences.setBool(GUEST_MODE_KEY, isGuest);
+    await sharedPreferences.setBool(guestModeKey, isGuest);
     final String chosenPseudo = (pseudo != null && pseudo.trim().isNotEmpty)
         ? pseudo.trim()
         : 'Visiteur';
@@ -63,16 +63,16 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   @override
   Future<bool> isGuest() async {
-    return sharedPreferences.getBool(GUEST_MODE_KEY) ?? true;
+    return sharedPreferences.getBool(guestModeKey) ?? true;
   }
 
   @override
   Future<void> setHasSeenOnboarding(bool value) async {
-    await sharedPreferences.setBool(HAS_SEEN_ONBOARDING_KEY, value);
+    await sharedPreferences.setBool(hasSeenOnboardingKey, value);
   }
 
   @override
   Future<bool> hasSeenOnboarding() async {
-    return sharedPreferences.getBool(HAS_SEEN_ONBOARDING_KEY) ?? false;
+    return sharedPreferences.getBool(hasSeenOnboardingKey) ?? false;
   }
 }

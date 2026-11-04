@@ -6,14 +6,14 @@ class ThemeManager extends ChangeNotifier {
   factory ThemeManager() => instance;
   ThemeManager._internal();
 
-  static const String THEME_KEY = "APP_THEME_MODE_KEY";
+  static const String themeKey = "APP_THEME_MODE_KEY";
   ThemeMode _themeMode = ThemeMode.system;
 
   ThemeMode get themeMode => _themeMode;
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedMode = prefs.getString(THEME_KEY);
+    final savedMode = prefs.getString(themeKey);
     if (savedMode == "dark") {
       _themeMode = ThemeMode.dark;
     } else if (savedMode == "light") {
@@ -28,11 +28,11 @@ class ThemeManager extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     if (mode == ThemeMode.dark) {
-      await prefs.setString(THEME_KEY, "dark");
+      await prefs.setString(themeKey, "dark");
     } else if (mode == ThemeMode.light) {
-      await prefs.setString(THEME_KEY, "light");
+      await prefs.setString(themeKey, "light");
     } else {
-      await prefs.setString(THEME_KEY, "system");
+      await prefs.setString(themeKey, "system");
     }
   }
 }

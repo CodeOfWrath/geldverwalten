@@ -42,11 +42,11 @@ class RecurringTransaction {
 }
 
 class RecurringManager {
-  static const String RECURRING_KEY = "RECURRING_TRANSACTIONS_KEY";
+  static const String recurringKey = "RECURRING_TRANSACTIONS_KEY";
 
   static Future<List<RecurringTransaction>> getRecurringTransactions() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(RECURRING_KEY);
+    final jsonString = prefs.getString(recurringKey);
     if (jsonString != null) {
       final List<dynamic> jsonList = jsonDecode(jsonString);
       return jsonList.map((item) => RecurringTransaction.fromJson(item)).toList();
@@ -59,6 +59,6 @@ class RecurringManager {
     final list = await getRecurringTransactions();
     list.add(item);
     final jsonString = jsonEncode(list.map((e) => e.toJson()).toList());
-    await prefs.setString(RECURRING_KEY, jsonString);
+    await prefs.setString(recurringKey, jsonString);
   }
 }

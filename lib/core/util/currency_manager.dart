@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CurrencyManager {
-  static const String CURRENCY_KEY = "APP_CURRENCY_KEY";
+  static const String currencyKey = "APP_CURRENCY_KEY";
 
   static const List<Map<String, String>> availableCurrencies = [
     {"code": "FCFA", "symbol": "FCFA", "name": "Franc CFA (XAF/XOF)"},
@@ -16,11 +16,11 @@ class CurrencyManager {
 
   static Future<String> getCurrency() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(CURRENCY_KEY) ?? "FCFA";
+    return prefs.getString(currencyKey) ?? "FCFA";
   }
 
   static Future<void> setCurrency(String currencySymbol) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(CURRENCY_KEY, currencySymbol);
+    await prefs.setString(currencyKey, currencySymbol);
   }
 }

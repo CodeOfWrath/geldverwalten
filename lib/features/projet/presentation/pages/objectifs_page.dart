@@ -37,78 +37,90 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
   }
 
   Future<void> _showCreateDialog() async {
+    bool isSaving = false;
+
     return showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Créer un projet / objectif"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _nomProjetController,
-                decoration: const InputDecoration(
-                  labelText: "Nom du projet",
-                  hintText: "ex: Achat Équipement, Epargne...",
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text("Créer un projet / objectif"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _nomProjetController,
+                    enabled: !isSaving,
+                    decoration: const InputDecoration(
+                      labelText: "Nom du projet",
+                      hintText: "ex: Achat Équipement, Epargne...",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _montantCibleController,
+                    keyboardType: TextInputType.number,
+                    enabled: !isSaving,
+                    decoration: const InputDecoration(
+                      labelText: "Montant cible (FCFA)",
+                      hintText: "ex: 100000",
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                if (!isSaving)
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text("Annuler"),
+                  ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final nom = _nomProjetController.text.trim();
+                          if (nom.isNotEmpty) {
+                            setDialogState(() {
+                              isSaving = true;
+                            });
+
+                            await sl.createProjetUseCase(nom);
+
+                            _nomProjetController.clear();
+                            _montantCibleController.clear();
+
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
+
+                            if (mounted) {
+                              await DbDialogs.showSuccess(
+                                this.context,
+                                title: "Projet créé avec succès !",
+                                message: "Le projet '$nom' a été correctement enregistré dans la base de données locale.",
+                              );
+                              _loadProjets();
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    minimumSize: const Size(100, 44),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text("Créer"),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _montantCibleController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: "Montant cible (FCFA)",
-                  hintText: "ex: 100000",
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Annuler"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final nom = _nomProjetController.text.trim();
-                if (nom.isNotEmpty) {
-                  Navigator.pop(context);
-
-                  // 1. Show blocking DB loading popup
-                  DbDialogs.showLoading(
-                    context,
-                    message: "Écriture du projet dans la base de données locale...",
-                  );
-
-                  await sl.createProjetUseCase(nom);
-                  await Future.delayed(const Duration(milliseconds: 500));
-
-                  _nomProjetController.clear();
-                  _montantCibleController.clear();
-
-                  if (mounted) {
-                    // 2. Hide DB loading popup
-                    DbDialogs.hideLoading(context);
-
-                    // 3. Show success popup
-                    await DbDialogs.showSuccess(
-                      context,
-                      title: "Projet créé avec succès !",
-                      message: "Le projet '$nom' a été correctement enregistré dans la base de données locale.",
-                    );
-
-                    _loadProjets();
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryGreen,
-                minimumSize: const Size(100, 44),
-              ),
-              child: const Text("Créer"),
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
@@ -160,7 +172,7 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                           border: Border.all(color: AppColors.border),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -177,7 +189,7 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                                   child: CircularProgressIndicator(
                                     value: overallProgress,
                                     strokeWidth: 12,
-                                    backgroundColor: AppColors.yellowEnergy.withOpacity(0.25),
+                                    backgroundColor: AppColors.yellowEnergy.withValues(alpha: 0.25),
                                     valueColor: const AlwaysStoppedAnimation<Color>(AppColors.yellowEnergy),
                                   ),
                                 ),
@@ -280,7 +292,7 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                                       Container(
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primaryGreen.withOpacity(0.12),
+                                          color: AppColors.primaryGreen.withValues(alpha: 0.12),
                                           borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: const Icon(
@@ -328,7 +340,7 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                                     child: LinearProgressIndicator(
                                       value: progress,
                                       minHeight: 8,
-                                      backgroundColor: AppColors.primaryGreen.withOpacity(0.15),
+                                      backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
                                       valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
                                     ),
                                   ),

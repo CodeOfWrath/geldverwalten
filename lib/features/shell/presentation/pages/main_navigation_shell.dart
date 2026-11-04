@@ -33,8 +33,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           builder: (context) => const AddExpensePage(),
         ),
       ).then((_) {
-        // Refresh active tab if needed
-        setState(() {});
+        if (mounted) setState(() {});
       });
       return;
     }
@@ -55,7 +54,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -120,7 +119,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: AppColors.primaryGreen.withOpacity(0.4),
+              color: AppColors.primaryGreen.withValues(alpha: 0.4),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

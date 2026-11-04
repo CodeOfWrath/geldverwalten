@@ -32,10 +32,10 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      final navigator = Navigator.of(context);
       await sl.loginUseCase(loginController.text.trim(), passwordController.text);
       if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
+        navigator.pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const MainNavigationShell()),
           (route) => false,
         );
@@ -68,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.accentRed.withOpacity(0.1),
+                    color: AppColors.accentRed.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.accentRed),
                   ),
@@ -155,10 +155,10 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 20),
               TextButton(
                 onPressed: () async {
+                  final navigator = Navigator.of(context);
                   await sl.authRepository.setGuestMode(true);
                   if (mounted) {
-                    Navigator.pushAndRemoveUntil(
-                      context,
+                    navigator.pushAndRemoveUntil(
                       MaterialPageRoute(builder: (context) => const MainNavigationShell()),
                       (route) => false,
                     );

@@ -12,7 +12,6 @@ class AppTheme {
         primary: AppColors.primaryGreen,
         secondary: AppColors.yellowEnergy,
         error: AppColors.accentRed,
-        background: AppColors.background,
         surface: AppColors.cardBackground,
       ),
       appBarTheme: const AppBarTheme(
@@ -96,7 +95,6 @@ class AppTheme {
         primary: AppColors.primaryGreen,
         secondary: AppColors.yellowEnergy,
         error: AppColors.accentRed,
-        background: darkBg,
         surface: darkSurface,
       ),
       appBarTheme: const AppBarTheme(

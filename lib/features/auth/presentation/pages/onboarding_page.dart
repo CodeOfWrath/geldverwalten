@@ -118,26 +118,26 @@ class OnboardingPage extends StatelessWidget {
     await sl.authRepository.setHasSeenOnboarding(true);
     await Future.delayed(const Duration(milliseconds: 500));
 
-    if (context.mounted) {
-      // 2. Hide DB loading popup
-      DbDialogs.hideLoading(context);
+    if (!context.mounted) return;
 
-      // 3. Show success popup
-      await DbDialogs.showSuccess(
-        context,
-        title: "Configuration enregistrée !",
-        message: "Bienvenue $finalPseudo ! Votre espace avec la devise $selectedCurrency est prêt dans la base de données locale.",
-      );
+    // 2. Hide DB loading popup
+    DbDialogs.hideLoading(context);
 
-      if (context.mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const MainNavigationShell(),
-          ),
-        );
-      }
-    }
+    // 3. Show success popup
+    await DbDialogs.showSuccess(
+      context,
+      title: "Configuration enregistrée !",
+      message: "Bienvenue $finalPseudo ! Votre espace avec la devise $selectedCurrency est prêt dans la base de données locale.",
+    );
+
+    if (!context.mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MainNavigationShell(),
+      ),
+    );
   }
 
   @override
@@ -168,8 +168,8 @@ class OnboardingPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: Column(
-                  children: const [
+                child: const Column(
+                  children: [
                     Text(
                       "Maîtrisez vos dépenses, réalisez vos projets !",
                       style: TextStyle(

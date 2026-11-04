@@ -10,13 +10,13 @@ abstract class EntreeLocalDataSource {
 
 class EntreeLocalDataSourceImpl implements EntreeLocalDataSource {
   final SharedPreferences sharedPreferences;
-  static const String CACHED_ENTREES_KEY = 'CACHED_ENTREES_KEY';
+  static const String cachedEntreesKey = 'CACHED_ENTREES_KEY';
 
   EntreeLocalDataSourceImpl({required this.sharedPreferences});
 
   @override
   Future<List<EntreeModel>> getCachedEntrees() async {
-    final jsonString = sharedPreferences.getString(CACHED_ENTREES_KEY);
+    final jsonString = sharedPreferences.getString(cachedEntreesKey);
     if (jsonString != null) {
       final List<dynamic> jsonList = jsonDecode(jsonString);
       return jsonList.map((item) => EntreeModel.fromJson(item)).toList();
@@ -27,7 +27,7 @@ class EntreeLocalDataSourceImpl implements EntreeLocalDataSource {
   @override
   Future<void> cacheEntrees(List<EntreeModel> list) async {
     final jsonString = jsonEncode(list.map((e) => e.toJson()).toList());
-    await sharedPreferences.setString(CACHED_ENTREES_KEY, jsonString);
+    await sharedPreferences.setString(cachedEntreesKey, jsonString);
   }
 
   @override

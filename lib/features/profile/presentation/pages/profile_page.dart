@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_manager.dart';
 import '../../../../core/util/budget_manager.dart';
 import '../../../../core/util/currency_manager.dart';
 import '../../../../core/util/notification_manager.dart';
+import '../../../../core/util/security_manager.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../auth/presentation/pages/onboarding_page.dart';
@@ -18,6 +20,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   UserEntity _user = UserEntity.guest;
   bool notificationsEnabled = true;
+  bool pinSecurityEnabled = false;
   String _currentCurrency = "FCFA";
 
   @override
@@ -30,14 +33,96 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = await sl.getCurrentUserUseCase();
     final notifState = await NotificationManager.isEnabled();
     final currency = await CurrencyManager.getCurrency();
+    final isPin = await SecurityManager.isPinEnabled();
 
     if (mounted) {
       setState(() {
         _user = user;
         notificationsEnabled = notifState;
         _currentCurrency = currency;
+        pinSecurityEnabled = isPin;
       });
     }
+  }
+
+  Future<void> _togglePinSecurity(bool val) async {
+    if (val) {
+      final success = await SecurityManager.showPinDialog(
+        context: context,
+        title: "Configuration Code PIN",
+        isSetup: true,
+      );
+      if (mounted && success) {
+        setState(() => pinSecurityEnabled = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Code PIN activé avec succès !"),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+      }
+    } else {
+      final success = await SecurityManager.showPinDialog(
+        context: context,
+        title: "Désactiver le Code PIN",
+        isSetup: false,
+      );
+      if (mounted && success) {
+        await SecurityManager.disablePin();
+        if (mounted) {
+          setState(() => pinSecurityEnabled = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Code PIN désactivé !"),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _showThemeSelectorDialog() async {
+    final current = themeManager.themeMode;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Thème d'affichage"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text("Thème Clair ☀️"),
+                trailing: current == ThemeMode.light ? const Icon(Icons.check_circle, color: AppColors.primaryGreen) : null,
+                onTap: () {
+                  themeManager.setThemeMode(ThemeMode.light);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text("Thème Sombre 🌙"),
+                trailing: current == ThemeMode.dark ? const Icon(Icons.check_circle, color: AppColors.primaryGreen) : null,
+                onTap: () {
+                  themeManager.setThemeMode(ThemeMode.dark);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text("Système (Automatique) 📱"),
+                trailing: current == ThemeMode.system ? const Icon(Icons.check_circle, color: AppColors.primaryGreen) : null,
+                onTap: () {
+                  themeManager.setThemeMode(ThemeMode.system);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showCurrencySelectorDialog() async {
@@ -45,9 +130,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
     await showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogParentContext) {
         return StatefulBuilder(
-          builder: (context, setStateDialog) {
+          builder: (dialogContext, setStateDialog) {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Text("Devise de l'application"),
@@ -55,17 +140,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: CurrencyManager.availableCurrencies.map((c) {
-                    return RadioListTile<String>(
+                    final isSelected = selected == c["symbol"];
+                    return ListTile(
                       title: Text("${c["name"]} (${c["symbol"]})"),
-                      value: c["symbol"]!,
-                      groupValue: selected,
-                      activeColor: AppColors.primaryGreen,
-                      onChanged: (val) {
-                        if (val != null) {
-                          setStateDialog(() {
-                            selected = val;
-                          });
-                        }
+                      trailing: isSelected ? const Icon(Icons.check_circle, color: AppColors.primaryGreen) : null,
+                      onTap: () {
+                        setStateDialog(() {
+                          selected = c["symbol"]!;
+                        });
                       },
                     );
                   }).toList(),
@@ -73,14 +155,16 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dialogContext),
                   child: const Text("Annuler"),
                 ),
                 ElevatedButton(
                   onPressed: () async {
                     await CurrencyManager.setCurrency(selected);
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                    }
                     if (mounted) {
-                      Navigator.pop(context);
                       setState(() {
                         _currentCurrency = selected;
                       });
@@ -118,7 +202,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     await showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text("Limites de dépenses par catégorie"),
@@ -142,7 +226,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text("Annuler"),
             ),
             ElevatedButton(
@@ -151,8 +235,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   final val = int.tryParse(entry.value.text.trim()) ?? 30000;
                   await BudgetManager.setLimit(entry.key, val);
                 }
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext);
+                }
                 if (mounted) {
-                  Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("Limites de budget mises à jour !"),
@@ -198,7 +284,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      backgroundColor: AppColors.primaryGreen.withOpacity(0.15),
+                      backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
                       child: const Text("👩🏽‍💼", style: TextStyle(fontSize: 28)),
                     ),
                     const SizedBox(width: 16),
@@ -224,8 +310,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: _user.isGuest
-                                  ? AppColors.yellowEnergy.withOpacity(0.2)
-                                  : AppColors.primaryGreen.withOpacity(0.15),
+                                  ? AppColors.yellowEnergy.withValues(alpha: 0.2)
+                                  : AppColors.primaryGreen.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -264,11 +350,23 @@ class _ProfilePageState extends State<ProfilePage> {
                         subtitle: const Text("Rappel pour renseigner vos dépenses", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                         trailing: Switch(
                           value: notificationsEnabled,
-                          activeColor: AppColors.primaryGreen,
+                          activeThumbColor: AppColors.primaryGreen,
                           onChanged: (val) async {
                             setState(() => notificationsEnabled = val);
                             await NotificationManager.setEnabled(val);
                           },
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+
+                      ListTile(
+                        leading: const Icon(Icons.lock_outline_rounded, color: AppColors.textPrimary),
+                        title: const Text("Sécurité Code PIN", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                        subtitle: const Text("Exiger un code PIN à l'accès", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        trailing: Switch(
+                          value: pinSecurityEnabled,
+                          activeThumbColor: AppColors.primaryGreen,
+                          onChanged: _togglePinSecurity,
                         ),
                       ),
                       const Divider(height: 1, indent: 16, endIndent: 16),
@@ -291,8 +389,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildSettingsTile(
                         icon: Icons.contrast_rounded,
                         title: "Thème",
-                        trailingText: "Système",
-                        onTap: () {},
+                        trailingText: themeManager.themeMode == ThemeMode.dark
+                            ? "Sombre 🌙"
+                            : themeManager.themeMode == ThemeMode.light
+                                ? "Clair ☀️"
+                                : "Système 📱",
+                        onTap: _showThemeSelectorDialog,
                       ),
                       const Divider(height: 1, indent: 16, endIndent: 16),
 
@@ -340,10 +442,10 @@ class _ProfilePageState extends State<ProfilePage> {
               else
                 OutlinedButton.icon(
                   onPressed: () async {
+                    final navigator = Navigator.of(context);
                     await sl.logoutUseCase();
                     if (mounted) {
-                      Navigator.pushAndRemoveUntil(
-                        context,
+                      navigator.pushAndRemoveUntil(
                         MaterialPageRoute(builder: (context) => const OnboardingPage()),
                         (route) => false,
                       );

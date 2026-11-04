@@ -3,27 +3,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 
 class NotificationManager {
-  static const String NOTIF_ENABLED_KEY = "NOTIF_ENABLED_KEY";
-  static const String NOTIF_PENDING_POPUP_KEY = "NOTIF_PENDING_POPUP_KEY";
+  static const String notifEnabledKey = "NOTIF_ENABLED_KEY";
+  static const String notifPendingPopupKey = "NOTIF_PENDING_POPUP_KEY";
 
   static Future<bool> isEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(NOTIF_ENABLED_KEY) ?? true;
+    return prefs.getBool(notifEnabledKey) ?? true;
   }
 
   static Future<void> setEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(NOTIF_ENABLED_KEY, enabled);
+    await prefs.setBool(notifEnabledKey, enabled);
   }
 
   static Future<void> setPendingPopup(bool pending) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(NOTIF_PENDING_POPUP_KEY, pending);
+    await prefs.setBool(notifPendingPopupKey, pending);
   }
 
   static Future<bool> hasPendingPopup() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(NOTIF_PENDING_POPUP_KEY) ?? false;
+    return prefs.getBool(notifPendingPopupKey) ?? false;
   }
 
   /// Affiche le popup de notification sur l'écran
@@ -38,7 +38,7 @@ class NotificationManager {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withOpacity(0.15),
+                  color: AppColors.primaryGreen.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.notifications_active_rounded, color: AppColors.primaryGreen, size: 28),
@@ -56,10 +56,10 @@ class NotificationManager {
               ),
             ],
           ),
-          content: Column(
+          content: const Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
                 "Rappel quotidien (20:00) :",
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary),

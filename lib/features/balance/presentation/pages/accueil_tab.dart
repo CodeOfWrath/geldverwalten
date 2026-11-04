@@ -41,6 +41,7 @@ class _AccueilTabState extends State<AccueilTab> {
     final pending = await NotificationManager.hasPendingPopup();
     if (pending && mounted) {
       await NotificationManager.setPendingPopup(false);
+      if (!mounted) return;
       NotificationManager.showNotificationPopup(context);
     }
   }
@@ -150,7 +151,7 @@ class _AccueilTabState extends State<AccueilTab> {
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: AppColors.primaryGreen.withOpacity(0.15),
+              backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
               child: const Text(
                 "👩🏽‍💼",
                 style: TextStyle(fontSize: 26),
@@ -203,7 +204,7 @@ class _AccueilTabState extends State<AccueilTab> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.yellowEnergy.withOpacity(0.15),
+        color: AppColors.yellowEnergy.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.yellowEnergy),
       ),
@@ -211,10 +212,10 @@ class _AccueilTabState extends State<AccueilTab> {
         children: [
           const Icon(Icons.cloud_off_rounded, color: AppColors.primaryGreen),
           const SizedBox(width: 12),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   "Mode Hors-ligne (Invité)",
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
@@ -258,7 +259,7 @@ class _AccueilTabState extends State<AccueilTab> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryGreen.withOpacity(0.35),
+            color: AppColors.primaryGreen.withValues(alpha: 0.35),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -281,11 +282,11 @@ class _AccueilTabState extends State<AccueilTab> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Row(
-                  children: const [
+                child: const Row(
+                  children: [
                     Icon(Icons.check_circle_outline, color: Colors.white, size: 12),
                     SizedBox(width: 4),
                     Text(
@@ -316,7 +317,7 @@ class _AccueilTabState extends State<AccueilTab> {
                 _sorties.isEmpty
                     ? "Aucune dépense enregistrée pour le moment."
                     : "${_sorties.length} transaction(s) enregistrée(s)",
-                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
               ),
             ],
           ),
@@ -371,9 +372,9 @@ class _AccueilTabState extends State<AccueilTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            children: [
               Text(
                 "Évolution des dépenses",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
@@ -470,7 +471,7 @@ class _AccueilTabState extends State<AccueilTab> {
             child: LinearProgressIndicator(
               value: ratio,
               minHeight: 6,
-              backgroundColor: barColor.withOpacity(0.15),
+              backgroundColor: barColor.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation<Color>(barColor),
             ),
           ),

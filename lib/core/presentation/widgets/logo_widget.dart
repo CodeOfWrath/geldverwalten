@@ -36,7 +36,15 @@ class DepensiaLogoWidget extends StatelessWidget {
               ),
             ],
           ),
-          child: Image.asset('assets/images/Dépensia_logo.png'),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CustomPaint(
+                size: Size(size * 0.65, size * 0.65),
+                painter: _WalletPainter(),
+              ),
+            ],
+          ),
         ),
         if (showText) ...[
           const SizedBox(height: 12),

@@ -73,6 +73,8 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         ? const MainNavigationShell()
         : const OnboardingPage();
 
+    if (!mounted) return;
+
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
@@ -126,7 +128,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 30,
                           offset: const Offset(0, 10),
                         ),
@@ -161,7 +163,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Text(
@@ -181,10 +183,10 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
               const Spacer(),
 
               // Subtle Loading Indicator
-              FadeTransition(
-                opacity: _fadeAnimation,
+              const FadeTransition(
+                opacity: AlwaysStoppedAnimation(1.0),
                 child: Column(
-                  children: const [
+                  children: [
                     SizedBox(
                       width: 24,
                       height: 24,

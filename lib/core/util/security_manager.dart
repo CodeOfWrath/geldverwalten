@@ -3,28 +3,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 
 class SecurityManager {
-  static const String PIN_ENABLED_KEY = "PIN_ENABLED_KEY";
-  static const String SAVED_PIN_KEY = "SAVED_PIN_KEY";
+  static const String pinEnabledKey = "PIN_ENABLED_KEY";
+  static const String savedPinKey = "SAVED_PIN_KEY";
 
   static Future<bool> isPinEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(PIN_ENABLED_KEY) ?? false;
+    return prefs.getBool(pinEnabledKey) ?? false;
   }
 
   static Future<String?> getSavedPin() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(SAVED_PIN_KEY);
+    return prefs.getString(savedPinKey);
   }
 
   static Future<void> setPin(String pin) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(SAVED_PIN_KEY, pin);
-    await prefs.setBool(PIN_ENABLED_KEY, true);
+    await prefs.setString(savedPinKey, pin);
+    await prefs.setBool(pinEnabledKey, true);
   }
 
   static Future<void> disablePin() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(PIN_ENABLED_KEY, false);
+    await prefs.setBool(pinEnabledKey, false);
   }
 
   static Future<bool> showPinDialog({

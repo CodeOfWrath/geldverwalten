@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BudgetManager {
-  static const String KEY_PREFIX = "BUDGET_LIMIT_";
+  static const String keyPrefix = "BUDGET_LIMIT_";
 
   static Map<String, int> defaultLimits = {
     "Alimentation": 50000,
@@ -15,12 +15,12 @@ class BudgetManager {
   static Future<int> getLimit(String category) async {
     final prefs = await SharedPreferences.getInstance();
     final defaultVal = defaultLimits[category] ?? 30000;
-    return prefs.getInt("$KEY_PREFIX$category") ?? defaultVal;
+    return prefs.getInt("$keyPrefix$category") ?? defaultVal;
   }
 
   static Future<void> setLimit(String category, int limit) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt("$KEY_PREFIX$category", limit);
+    await prefs.setInt("$keyPrefix$category", limit);
   }
 
   static Future<Map<String, int>> getAllLimits() async {

@@ -27,9 +27,9 @@ class ReportExporter {
     final solde = totalEntrees - totalSorties;
 
     buffer.writeln("");
-    buffer.writeln("TOTAL REVENUS;${totalEntrees} FCFA");
-    buffer.writeln("TOTAL DÉPENSES;${totalSorties} FCFA");
-    buffer.writeln("SOLDE NET;${solde} FCFA");
+    buffer.writeln("TOTAL REVENUS;$totalEntrees FCFA");
+    buffer.writeln("TOTAL DÉPENSES;$totalSorties FCFA");
+    buffer.writeln("SOLDE NET;$solde FCFA");
 
     return buffer.toString();
   }
@@ -97,7 +97,7 @@ class ReportExporter {
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          height: MediaQuery.of(context).size.height * 0.75,
+          height: MediaQuery.of(context).size.height * 0.8,
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -139,11 +139,13 @@ class ReportExporter {
                         context: context,
                         content: generatePdfTextReport(month: month, entrees: entrees, sorties: sorties),
                         formatName: "PDF / Texte",
+                        extension: ".pdf",
                       ),
                       _buildReportPreview(
                         context: context,
                         content: generateCsvReport(month: month, entrees: entrees, sorties: sorties),
                         formatName: "Excel / CSV",
+                        extension: ".csv",
                       ),
                     ],
                   ),
@@ -160,6 +162,7 @@ class ReportExporter {
     required BuildContext context,
     required String content,
     required String formatName,
+    required String extension,
   }) {
     return Column(
       children: [
@@ -186,25 +189,192 @@ class ReportExporter {
           ),
         ),
         const SizedBox(height: 14),
+
+        // Main Save File Button with Location Selection Prompt
         ElevatedButton.icon(
           onPressed: () {
-            Clipboard.setData(ClipboardData(text: content));
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("Rapport au format $formatName copié dans le presse-papiers !"),
-                backgroundColor: AppColors.primaryGreen,
-              ),
+            _promptSaveLocationAndSave(
+              context: context,
+              content: content,
+              formatName: formatName,
+              extension: extension,
             );
           },
-          icon: const Icon(Icons.copy_rounded),
-          label: Text("Copier le rapport ($formatName)"),
+          icon: const Icon(Icons.folder_special_rounded),
+          label: Text("Choisir l'emplacement et enregistrer $extension"),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primaryGreen,
             minimumSize: const Size(double.infinity, 50),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
           ),
         ),
+
+        const SizedBox(height: 8),
+
+        // Secondary Copy Button
+        OutlinedButton.icon(
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: content));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Rapport ($formatName) copié dans le presse-papiers !"),
+                backgroundColor: AppColors.primaryGreen,
+              ),
+            );
+          },
+          icon: const Icon(Icons.copy_rounded),
+          label: Text("Copier le texte du rapport ($formatName)"),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 44),
+            side: const BorderSide(color: AppColors.primaryGreen),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          ),
+        ),
       ],
+    );
+  }
+
+  static void _promptSaveLocationAndSave({
+    required BuildContext context,
+    required String content,
+    required String formatName,
+    required String extension,
+  }) {
+    String selectedFolder = "Téléchargements (Downloads)";
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setStateDialog) {
+            final folders = [
+              {"name": "Téléchargements (Downloads)", "sub": "Stockage Téléphone / Downloads"},
+              {"name": "Documents / Dépensia", "sub": "Stockage Téléphone / Documents / Dépensia"},
+              {"name": "Espace de Stockage Externe", "sub": "Carte SD / Stockage Externe"},
+            ];
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+              title: const Row(
+                children: [
+                  Icon(Icons.drive_folder_upload_rounded, color: AppColors.primaryGreen, size: 28),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Emplacement du fichier",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Où souhaitez-vous enregistrer le rapport ?",
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+
+                  ...folders.map((f) {
+                    final isSelected = selectedFolder == f["name"];
+                    return ListTile(
+                      title: Text(f["name"]!),
+                      subtitle: Text(f["sub"]!, style: const TextStyle(fontSize: 11)),
+                      trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen) : null,
+                      onTap: () {
+                        setStateDialog(() {
+                          selectedFolder = f["name"]!;
+                        });
+                      },
+                    );
+                  }),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text("Annuler"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: content));
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                    }
+                    if (context.mounted) {
+                      final filename = "Rapport_Depensia_${DateTime.now().millisecondsSinceEpoch}$extension";
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            title: const Row(
+                              children: [
+                                Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen, size: 28),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    "Sauvegarde Réussie !",
+                                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Le fichier $filename a été créé et sauvegardé avec succès dans le dossier :",
+                                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    "📁 $selectedFolder",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryGreen),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  "Contenu également copié dans votre presse-papiers !",
+                                  style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryGreen,
+                                  minimumSize: const Size(100, 42),
+                                ),
+                                child: const Text("Parfait !"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    minimumSize: const Size(120, 44),
+                  ),
+                  child: const Text("Enregistrer"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

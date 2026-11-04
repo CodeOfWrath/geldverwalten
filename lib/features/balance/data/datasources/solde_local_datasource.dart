@@ -11,13 +11,13 @@ abstract class SoldeLocalDataSource {
 
 class SoldeLocalDataSourceImpl implements SoldeLocalDataSource {
   final SharedPreferences sharedPreferences;
-  static const String CACHED_SOLDE_KEY = 'CACHED_SOLDE_KEY';
+  static const String cachedSoldeKey = 'CACHED_SOLDE_KEY';
 
   SoldeLocalDataSourceImpl({required this.sharedPreferences});
 
   @override
   Future<List<SoldeModel>> getCachedSolde() async {
-    final jsonString = sharedPreferences.getString(CACHED_SOLDE_KEY);
+    final jsonString = sharedPreferences.getString(cachedSoldeKey);
     if (jsonString != null) {
       final List<dynamic> jsonList = jsonDecode(jsonString);
       return jsonList.map((item) => SoldeModel.fromJson(item)).toList();
@@ -39,6 +39,6 @@ class SoldeLocalDataSourceImpl implements SoldeLocalDataSource {
   @override
   Future<void> cacheSolde(List<SoldeModel> list) async {
     final jsonString = jsonEncode(list.map((e) => e.toJson()).toList());
-    await sharedPreferences.setString(CACHED_SOLDE_KEY, jsonString);
+    await sharedPreferences.setString(cachedSoldeKey, jsonString);
   }
 }
