@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/util/budget_manager.dart';
 import '../../../../core/util/data_change_notifier.dart';
 import '../../../../core/util/db_loading_dialog.dart';
 import '../../../../core/util/recurring_manager.dart';
@@ -115,7 +116,26 @@ class _AddExpensePageState extends State<AddExpensePage> {
       final comment = commentController.text.trim();
       final raison = comment.isNotEmpty ? "$comment ($categoryLabel)" : categoryLabel;
 
+      int alertPct = 0;
+      int alertNewTotal = 0;
+      int alertLimit = 0;
+
       if (isExpenseMode) {
+        // Calculate budget limit threshold
+        final existingSorties = await sl.getSortiesUseCase();
+        int existingCatTotal = 0;
+        for (var s in existingSorties) {
+          if (s.message.contains(selectedCategory)) {
+            existingCatTotal += s.montant;
+          }
+        }
+
+        alertLimit = await BudgetManager.getLimit(selectedCategory);
+        alertNewTotal = existingCatTotal + intAmount;
+        if (alertLimit > 0) {
+          alertPct = ((alertNewTotal / alertLimit) * 100).toInt();
+        }
+
         await sl.addSortieUseCase(raison, amountText, 1);
       } else {
         await sl.addEntreeUseCase(raison, intAmount);
@@ -146,14 +166,87 @@ class _AddExpensePageState extends State<AddExpensePage> {
         // 2. Hide DB loading popup
         DbDialogs.hideLoading(context);
 
-        // 3. Show success popup dialog
-        await DbDialogs.showSuccess(
-          context,
-          title: "Enregistrement effectif !",
-          message: isExpenseMode
-              ? "La dépense de $amountText FCFA a été correctement enregistrée dans la base de données !"
-              : "L'entrée d'argent de $amountText FCFA a été correctement enregistrée dans la base de données !",
-        );
+        // 3. Show Alert if threshold reached, else show standard success dialog
+        if (isExpenseMode && alertPct >= 80) {
+          final isOver = alertPct >= 100;
+          await showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Row(
+                  children: [
+                    Icon(
+                      isOver ? Icons.warning_amber_rounded : Icons.notifications_active_rounded,
+                      color: isOver ? AppColors.accentRed : Colors.orange,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        isOver ? "Alerte : Budget Dépassé !" : "Alerte : Seuil de 80% Atteint !",
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: isOver ? AppColors.accentRed : Colors.orange,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Attention ! Avec cette dépense de $amountText FCFA, vous avez atteint $alertPct% de votre budget alloué à la catégorie '$selectedCategory'.",
+                      style: const TextStyle(fontSize: 13, height: 1.4),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: (isOver ? AppColors.accentRed : Colors.orange).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("Total consommé :", style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+                          Text(
+                            "$alertNewTotal / $alertLimit FCFA",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isOver ? AppColors.accentRed : Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isOver ? AppColors.accentRed : AppColors.primaryGreen,
+                      minimumSize: const Size(110, 42),
+                    ),
+                    child: const Text("J'ai compris"),
+                  ),
+                ],
+              );
+            },
+          );
+        } else {
+          await DbDialogs.showSuccess(
+            context,
+            title: "Enregistrement effectif !",
+            message: isExpenseMode
+                ? "La dépense de $amountText FCFA a été correctement enregistrée dans la base de données !"
+                : "L'entrée d'argent de $amountText FCFA a été correctement enregistrée dans la base de données !",
+          );
+        }
 
         if (mounted) {
           Navigator.pop(context, true);

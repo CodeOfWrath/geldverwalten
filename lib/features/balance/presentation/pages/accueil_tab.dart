@@ -7,6 +7,7 @@ import '../../../../core/util/data_change_notifier.dart';
 import '../../../../core/util/notification_manager.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/pages/login_page.dart';
+import '../../../entree/domain/entities/entree_entity.dart';
 import '../../../sortie/domain/entities/sortie_entity.dart';
 
 class AccueilTab extends StatefulWidget {
@@ -19,7 +20,8 @@ class AccueilTab extends StatefulWidget {
 class _AccueilTabState extends State<AccueilTab> {
   String _selectedPeriod = "Mois";
   UserEntity _currentUser = UserEntity.guest;
-  List<SortieEntity> _sorties = [];
+  List<SortieEntity> _allSorties = [];
+  List<EntreeEntity> _allEntrees = [];
   Map<String, int> _categoryLimits = {};
   String _currencySymbol = "FCFA";
 
@@ -49,21 +51,77 @@ class _AccueilTabState extends State<AccueilTab> {
   Future<void> _loadData() async {
     final user = await sl.getCurrentUserUseCase();
     final listSorties = await sl.getSortiesUseCase();
+    final listEntrees = await sl.getEntreesUseCase();
     final limits = await BudgetManager.getAllLimits();
     final currency = await CurrencyManager.getCurrency();
 
     if (mounted) {
       setState(() {
         _currentUser = user;
-        _sorties = listSorties;
+        _allSorties = listSorties;
+        _allEntrees = listEntrees;
         _categoryLimits = limits;
         _currencySymbol = currency;
       });
     }
   }
 
-  int get _totalDepenses {
-    return _sorties.fold<int>(0, (sum, item) => sum + item.montant);
+  DateTime? _parseDate(String dateStr) {
+    try {
+      if (dateStr.contains('/')) {
+        final parts = dateStr.split('/');
+        if (parts.length == 3) {
+          return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        }
+      } else if (dateStr.contains('-')) {
+        return DateTime.tryParse(dateStr);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  List<SortieEntity> get _filteredSorties {
+    final now = DateTime.now();
+    return _allSorties.where((s) {
+      final dt = _parseDate(s.date);
+      if (dt == null) return true; // Include if date format unparsed
+
+      if (_selectedPeriod == "Jour") {
+        return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+      } else if (_selectedPeriod == "Semaine") {
+        final diff = now.difference(dt).inDays;
+        return diff >= 0 && diff <= 7;
+      } else {
+        // Mois
+        return dt.year == now.year && dt.month == now.month;
+      }
+    }).toList();
+  }
+
+  List<EntreeEntity> get _filteredEntrees {
+    final now = DateTime.now();
+    return _allEntrees.where((e) {
+      final dt = _parseDate(e.date);
+      if (dt == null) return true;
+
+      if (_selectedPeriod == "Jour") {
+        return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+      } else if (_selectedPeriod == "Semaine") {
+        final diff = now.difference(dt).inDays;
+        return diff >= 0 && diff <= 7;
+      } else {
+        // Mois
+        return dt.year == now.year && dt.month == now.month;
+      }
+    }).toList();
+  }
+
+  int get _totalDepensesPeriod {
+    return _filteredSorties.fold<int>(0, (sum, item) => sum + item.montant);
+  }
+
+  int get _totalRevenusPeriod {
+    return _filteredEntrees.fold<int>(0, (sum, item) => sum + item.montant);
   }
 
   Map<String, int> get _categoryTotals {
@@ -76,7 +134,7 @@ class _AccueilTabState extends State<AccueilTab> {
       "Autre": 0,
     };
 
-    for (var s in _sorties) {
+    for (var s in _filteredSorties) {
       if (s.message.contains("Alimentation")) {
         totals["Alimentation"] = (totals["Alimentation"] ?? 0) + s.montant;
       } else if (s.message.contains("Transport")) {
@@ -115,17 +173,17 @@ class _AccueilTabState extends State<AccueilTab> {
                 // 2. Offline Sync Callout Banner if Guest
                 if (_currentUser.isGuest) _buildGuestBanner(context),
 
-                // 3. Main Emerald Card ("Dépenses ce mois-ci")
+                // 3. Main Emerald Card
                 _buildMainExpenseCard(),
 
                 const SizedBox(height: 24),
 
-                // 4. Period Filter Selector Pills
+                // 4. Period Filter Selector Pills (Jour, Semaine, Mois)
                 _buildPeriodSelector(context),
 
                 const SizedBox(height: 20),
 
-                // 5. Line Chart Card
+                // 5. Dual Line Chart Card with Dynamic Values Callouts
                 _buildLineChartCard(context),
 
                 const SizedBox(height: 24),
@@ -173,7 +231,7 @@ class _AccueilTabState extends State<AccueilTab> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "Voici un aperçu de vos dépenses",
+                  "Aperçu du solde & dépenses",
                   style: TextStyle(
                     fontSize: 12,
                     color: subtextColor,
@@ -254,7 +312,12 @@ class _AccueilTabState extends State<AccueilTab> {
   }
 
   Widget _buildMainExpenseCard() {
-    final total = _totalDepenses;
+    final total = _totalDepensesPeriod;
+    final titlePeriod = _selectedPeriod == "Jour"
+        ? "Dépenses aujourd'hui"
+        : _selectedPeriod == "Semaine"
+            ? "Dépenses cette semaine"
+            : "Dépenses ce mois-ci";
 
     return Container(
       width: double.infinity,
@@ -280,9 +343,9 @@ class _AccueilTabState extends State<AccueilTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Dépenses ce mois-ci",
-                style: TextStyle(
+              Text(
+                titlePeriod,
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -294,15 +357,9 @@ class _AccueilTabState extends State<AccueilTab> {
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.check_circle_outline, color: Colors.white, size: 12),
-                    SizedBox(width: 4),
-                    Text(
-                      "Actif",
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                child: Text(
+                  _selectedPeriod,
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -323,9 +380,9 @@ class _AccueilTabState extends State<AccueilTab> {
               const Icon(Icons.account_balance_wallet_outlined, color: AppColors.yellowEnergy, size: 20),
               const SizedBox(width: 6),
               Text(
-                _sorties.isEmpty
-                    ? "Aucune dépense enregistrée pour le moment."
-                    : "${_sorties.length} transaction(s) enregistrée(s)",
+                _filteredSorties.isEmpty
+                    ? "Aucune dépense sur cette période."
+                    : "${_filteredSorties.length} transaction(s) ($titlePeriod)",
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
               ),
             ],
@@ -336,32 +393,36 @@ class _AccueilTabState extends State<AccueilTab> {
   }
 
   Widget _buildPeriodSelector(BuildContext context) {
-    final periods = ["Jour", "Semaine", "Mois", "Événement"];
+    final periods = ["Jour", "Semaine", "Mois"];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: periods.map((period) {
         final isSelected = _selectedPeriod == period;
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedPeriod = period;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.primaryGreen : Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isSelected ? AppColors.primaryGreen : AppColors.border.withValues(alpha: 0.3),
+        return Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedPeriod = period;
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primaryGreen : Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected ? AppColors.primaryGreen : AppColors.border.withValues(alpha: 0.3),
+                ),
               ),
-            ),
-            child: Text(
-              period,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                fontSize: 13,
+              child: Text(
+                period,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
@@ -371,6 +432,8 @@ class _AccueilTabState extends State<AccueilTab> {
   }
 
   Widget _buildLineChartCard(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -385,22 +448,51 @@ class _AccueilTabState extends State<AccueilTab> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Évolution des dépenses",
+                "Graphique des flux ($_selectedPeriod)",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
-                  color: Theme.of(context).colorScheme.onSurface,
+                  color: textColor,
                 ),
               ),
-              const Icon(Icons.show_chart, color: AppColors.primaryGreen),
+              const Icon(Icons.show_chart_rounded, color: AppColors.primaryGreen),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+
+          // Chart Legend Row
+          const Row(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.circle, color: AppColors.primaryGreen, size: 10),
+                  SizedBox(width: 6),
+                  Text("Revenus (+)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGreen)),
+                ],
+              ),
+              SizedBox(width: 18),
+              Row(
+                children: [
+                  Icon(Icons.circle, color: AppColors.accentRed, size: 10),
+                  SizedBox(width: 6),
+                  Text("Dépenses (-)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.accentRed)),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
           SizedBox(
-            height: 120,
+            height: 140,
             child: CustomPaint(
-              size: const Size(double.infinity, 120),
-              painter: _LineChartPainter(hasData: _sorties.isNotEmpty),
+              size: const Size(double.infinity, 140),
+              painter: _DualLineChartPainter(
+                totalIncome: _totalRevenusPeriod,
+                totalExpense: _totalDepensesPeriod,
+                currency: _currencySymbol,
+                textColor: textColor,
+              ),
             ),
           ),
         ],
@@ -422,7 +514,7 @@ class _AccueilTabState extends State<AccueilTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Limites de budget & Catégories",
+            "Répartition & Limites ($_selectedPeriod)",
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -430,12 +522,12 @@ class _AccueilTabState extends State<AccueilTab> {
             ),
           ),
           const SizedBox(height: 16),
-          if (_sorties.isEmpty)
+          if (_filteredSorties.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: Center(
                 child: Text(
-                  "Aucune dépense enregistrée.\nAppuyez sur '+' pour ajouter votre première dépense.",
+                  "Aucune dépense enregistrée pour cette période.\nAppuyez sur '+' pour ajouter une dépense.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
@@ -499,35 +591,174 @@ class _AccueilTabState extends State<AccueilTab> {
   }
 }
 
-class _LineChartPainter extends CustomPainter {
-  final bool hasData;
+class _DualLineChartPainter extends CustomPainter {
+  final int totalIncome;
+  final int totalExpense;
+  final String currency;
+  final Color textColor;
 
-  _LineChartPainter({required this.hasData});
+  _DualLineChartPainter({
+    required this.totalIncome,
+    required this.totalExpense,
+    required this.currency,
+    required this.textColor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+    final incomePaint = Paint()
       ..color = AppColors.primaryGreen
-      ..strokeWidth = 3
+      ..strokeWidth = 3.5
       ..style = PaintingStyle.stroke;
 
-    final path = Path();
-    if (hasData) {
-      path.moveTo(0, size.height * 0.75);
-      path.cubicTo(
-        size.width * 0.3,
-        size.height * 0.85,
-        size.width * 0.6,
-        size.height * 0.3,
-        size.width,
-        size.height * 0.2,
-      );
-    } else {
-      path.moveTo(0, size.height * 0.9);
-      path.lineTo(size.width, size.height * 0.9);
+    final expensePaint = Paint()
+      ..color = AppColors.accentRed
+      ..strokeWidth = 3.5
+      ..style = PaintingStyle.stroke;
+
+    final pointPaintIncome = Paint()
+      ..color = AppColors.primaryGreen
+      ..style = PaintingStyle.fill;
+
+    final pointPaintExpense = Paint()
+      ..color = AppColors.accentRed
+      ..style = PaintingStyle.fill;
+
+    final maxVal = (totalIncome > totalExpense ? totalIncome : totalExpense).clamp(1, 1000000000);
+    final incomeRatio = (totalIncome / maxVal).clamp(0.08, 1.0);
+    final expenseRatio = (totalExpense / maxVal).clamp(0.08, 1.0);
+
+    // Dynamic Y positions following curve height
+    final rawYIncome = size.height * (0.85 - 0.65 * incomeRatio);
+    final rawYExpense = size.height * (0.85 - 0.65 * expenseRatio);
+
+    // Anti-overlap spacing calculation
+    double badgeYIncome = rawYIncome - 12;
+    double badgeYExpense = rawYExpense - 12;
+
+    const double minSpacing = 28.0;
+    if ((badgeYIncome - badgeYExpense).abs() < minSpacing) {
+      if (totalIncome >= totalExpense) {
+        badgeYIncome = (rawYIncome - 14).clamp(0.0, size.height - 24.0);
+        badgeYExpense = badgeYIncome + minSpacing;
+      } else {
+        badgeYExpense = (rawYExpense - 14).clamp(0.0, size.height - 24.0);
+        badgeYIncome = badgeYExpense + minSpacing;
+      }
     }
 
-    canvas.drawPath(path, paint);
+    badgeYIncome = badgeYIncome.clamp(0.0, size.height - 24.0);
+    badgeYExpense = badgeYExpense.clamp(0.0, size.height - 24.0);
+
+    // Format text
+    final textIncome = "+$totalIncome $currency";
+    final textExpense = "-$totalExpense $currency";
+
+    // Measure text width
+    final tpIncome = _layoutText(textIncome, AppColors.primaryGreen);
+    final tpExpense = _layoutText(textExpense, AppColors.accentRed);
+
+    final badgeWidthIncome = tpIncome.width + 16;
+    final badgeWidthExpense = tpExpense.width + 16;
+
+    final badgeXIncome = (size.width - badgeWidthIncome).clamp(0.0, size.width - badgeWidthIncome);
+    final badgeXExpense = (size.width - badgeWidthExpense).clamp(0.0, size.width - badgeWidthExpense);
+
+    final curveMaxXIncome = badgeXIncome - 6;
+    final curveMaxXExpense = badgeXExpense - 6;
+
+    // 1. Curve Points
+    final p1Income = Offset(0, size.height * 0.85);
+    final p2Income = Offset(curveMaxXIncome * 0.5, (size.height * 0.85 + rawYIncome) / 2);
+    final p3Income = Offset(curveMaxXIncome, rawYIncome);
+
+    final p1Expense = Offset(0, size.height * 0.85);
+    final p2Expense = Offset(curveMaxXExpense * 0.5, (size.height * 0.85 + rawYExpense) / 2);
+    final p3Expense = Offset(curveMaxXExpense, rawYExpense);
+
+    // 2. Draw Income Curve up to the badge edge
+    final incomePath = Path()
+      ..moveTo(p1Income.dx, p1Income.dy)
+      ..cubicTo(curveMaxXIncome * 0.25, p1Income.dy, curveMaxXIncome * 0.35, p2Income.dy, p2Income.dx, p2Income.dy)
+      ..cubicTo(curveMaxXIncome * 0.65, p2Income.dy, curveMaxXIncome * 0.85, p3Income.dy, p3Income.dx, p3Income.dy);
+
+    canvas.drawPath(incomePath, incomePaint);
+
+    // 3. Draw Expense Curve up to the badge edge
+    final expensePath = Path()
+      ..moveTo(p1Expense.dx, p1Expense.dy)
+      ..cubicTo(curveMaxXExpense * 0.25, p1Expense.dy, curveMaxXExpense * 0.35, p2Expense.dy, p2Expense.dx, p2Expense.dy)
+      ..cubicTo(curveMaxXExpense * 0.65, p2Expense.dy, curveMaxXExpense * 0.85, p3Expense.dy, p3Expense.dx, p3Expense.dy);
+
+    canvas.drawPath(expensePath, expensePaint);
+
+    // 4. Draw End Points
+    canvas.drawCircle(p3Income, 4, pointPaintIncome);
+    canvas.drawCircle(p3Expense, 4, pointPaintExpense);
+
+    // 5. Draw Non-Overlapping Dynamic Badge Callouts
+    _drawBadgeAt(
+      canvas: canvas,
+      tp: tpIncome,
+      badgeX: badgeXIncome,
+      badgeY: badgeYIncome,
+      badgeWidth: badgeWidthIncome,
+      badgeHeight: tpIncome.height + 8,
+      color: AppColors.primaryGreen,
+    );
+
+    _drawBadgeAt(
+      canvas: canvas,
+      tp: tpExpense,
+      badgeX: badgeXExpense,
+      badgeY: badgeYExpense,
+      badgeWidth: badgeWidthExpense,
+      badgeHeight: tpExpense.height + 8,
+      color: AppColors.accentRed,
+    );
+  }
+
+  TextPainter _layoutText(String text, Color color) {
+    final textSpan = TextSpan(
+      text: text,
+      style: TextStyle(
+        color: color,
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    final tp = TextPainter(text: textSpan, textDirection: TextDirection.ltr);
+    tp.layout();
+    return tp;
+  }
+
+  void _drawBadgeAt({
+    required Canvas canvas,
+    required TextPainter tp,
+    required double badgeX,
+    required double badgeY,
+    required double badgeWidth,
+    required double badgeHeight,
+    required Color color,
+  }) {
+    final badgeRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(badgeX, badgeY, badgeWidth, badgeHeight),
+      const Radius.circular(10),
+    );
+
+    final bgPaint = Paint()
+      ..color = color.withValues(alpha: 0.16)
+      ..style = PaintingStyle.fill;
+
+    final borderPaint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawRRect(badgeRect, bgPaint);
+    canvas.drawRRect(badgeRect, borderPaint);
+
+    tp.paint(canvas, Offset(badgeX + 8, badgeY + 4));
   }
 
   @override
