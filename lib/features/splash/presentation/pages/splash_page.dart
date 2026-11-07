@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/presentation/widgets/logo_widget.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/util/security_manager.dart';
 import '../../../auth/presentation/pages/onboarding_page.dart';
 import '../../../shell/presentation/pages/main_navigation_shell.dart';
 
@@ -68,6 +69,28 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     try {
       hasSeenOnboarding = await sl.authRepository.hasSeenOnboarding();
     } catch (_) {}
+
+    // 2. Check if PIN Security is enabled
+    final isPinEnabled = await SecurityManager.isPinEnabled();
+    if (hasSeenOnboarding && isPinEnabled && mounted) {
+      bool pinVerified = await SecurityManager.showPinDialog(
+        context: context,
+        title: "Déverrouillage par Code PIN",
+        isSetup: false,
+      );
+
+      // Loop until user enters the correct PIN
+      while (!pinVerified && mounted) {
+        if (!mounted) break;
+        pinVerified = await SecurityManager.showPinDialog(
+          context: context,
+          title: "Code PIN Requis",
+          isSetup: false,
+        );
+      }
+    }
+
+    if (!mounted) return;
 
     final Widget targetPage = hasSeenOnboarding
         ? const MainNavigationShell()

@@ -166,20 +166,67 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    await CurrencyManager.setCurrency(selected);
-                    if (dialogContext.mounted) {
+                    if (selected == _currentCurrency) {
                       Navigator.pop(dialogContext);
+                      return;
                     }
-                    if (mounted) {
-                      setState(() {
-                        _currentCurrency = selected;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("Devise modifiée en $selected !"),
-                          backgroundColor: AppColors.primaryGreen,
-                        ),
-                      );
+
+                    // Show Warning Confirmation Alert Box
+                    final bool? confirmChange = await showDialog<bool>(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          title: const Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  "Avertissement de Conversion",
+                                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.orange),
+                                ),
+                              ),
+                            ],
+                          ),
+                          content: Text(
+                            "Attention ! Changer la devise en '$selected' convertira automatiquement l'ensemble de vos montants affichés. Cela pourrait engendrer de légères variances d'arrondi sur les nouvelles valeurs des prix (conversion approximative).",
+                            style: const TextStyle(fontSize: 13, height: 1.4),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text("Annuler"),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryGreen,
+                                minimumSize: const Size(120, 42),
+                              ),
+                              child: const Text("Confirmer"),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+
+                    if (confirmChange == true) {
+                      await CurrencyManager.setCurrency(selected);
+                      if (dialogContext.mounted) {
+                        Navigator.pop(dialogContext);
+                      }
+                      if (mounted) {
+                        setState(() {
+                          _currentCurrency = selected;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Devise convertie en $selected (Approximation) !"),
+                            backgroundColor: AppColors.primaryGreen,
+                          ),
+                        );
+                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(

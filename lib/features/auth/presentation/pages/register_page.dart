@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/presentation/widgets/logo_widget.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/util/currency_manager.dart';
+import '../../../../core/util/db_loading_dialog.dart';
 import '../../../shell/presentation/pages/main_navigation_shell.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -19,6 +21,159 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
   String? errorMessage;
+
+  Future<void> _askVisitorInfoAndContinue() async {
+    final TextEditingController visitorPseudoController = TextEditingController();
+    String selectedCurrency = "FCFA";
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setStateDialog) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              backgroundColor: Colors.white,
+              title: const Text(
+                "Mode Visiteur 👋",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Personnalisez votre espace hors-ligne :",
+                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: visitorPseudoController,
+                      autofocus: true,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white,
+                        labelText: "Votre pseudo",
+                        labelStyle: const TextStyle(color: AppColors.textSecondary),
+                        hintText: "ex: Micaelle, Alex...",
+                        hintStyle: const TextStyle(color: AppColors.textLight),
+                        prefixIcon: const Icon(Icons.person_outline, color: AppColors.primaryGreen),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Choisissez votre devise :",
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedCurrency,
+                          dropdownColor: Colors.white,
+                          isExpanded: true,
+                          style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                          items: CurrencyManager.availableCurrencies.map((c) {
+                            return DropdownMenuItem<String>(
+                              value: c["symbol"],
+                              child: Text(
+                                "${c["name"]} (${c["symbol"]})",
+                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setStateDialog(() {
+                                selectedCurrency = val;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text("Annuler"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext, true);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    minimumSize: const Size(110, 46),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
+                  ),
+                  child: const Text("Continuer"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    final inputPseudo = visitorPseudoController.text.trim();
+    final finalPseudo = inputPseudo.isNotEmpty ? inputPseudo : "Visiteur";
+
+    if (!mounted) return;
+
+    DbDialogs.showLoading(
+      context,
+      message: "Enregistrement du profil dans la base de données locale...",
+    );
+
+    await sl.authRepository.setGuestMode(true, pseudo: finalPseudo);
+    await CurrencyManager.setCurrency(selectedCurrency);
+    await sl.authRepository.setHasSeenOnboarding(true);
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    DbDialogs.hideLoading(context);
+
+    await DbDialogs.showSuccess(
+      context,
+      title: "Profil Visiteur prêt !",
+      message: "Bienvenue $finalPseudo ! Votre espace hors-ligne en $selectedCurrency est configuré.",
+    );
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const MainNavigationShell()),
+      (route) => false,
+    );
+  }
 
   Future<void> _handleRegister() async {
     if (nomController.text.isEmpty ||
@@ -141,6 +296,14 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
 
               const SizedBox(height: 16),
+
+              TextButton(
+                onPressed: _askVisitorInfoAndContinue,
+                child: const Text(
+                  "Continuer sans compte (Mode Visiteur)",
+                  style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                ),
+              ),
             ],
           ),
         ),

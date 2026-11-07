@@ -14,11 +14,22 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<UserEntity> login(String emailOrPseudo, String password) async {
-    final userModel = await remoteDataSource.login(emailOrPseudo, password);
-    await localDataSource.cacheUser(userModel);
-    await localDataSource.setGuestMode(false);
-    await localDataSource.setHasSeenOnboarding(true);
-    return userModel;
+    try {
+      final remoteUser = await remoteDataSource.login(emailOrPseudo, password);
+      await localDataSource.cacheUser(remoteUser);
+      await localDataSource.setGuestMode(false);
+      await localDataSource.setHasSeenOnboarding(true);
+      return remoteUser;
+    } catch (_) {
+      final localUser = await localDataSource.validateLocalLogin(emailOrPseudo, password);
+      if (localUser != null) {
+        await localDataSource.cacheUser(localUser);
+        await localDataSource.setGuestMode(false);
+        await localDataSource.setHasSeenOnboarding(true);
+        return localUser;
+      }
+      throw Exception("Identifiants incorrects ou compte inexistant. Veuillez d'abord créer un compte.");
+    }
   }
 
   @override
@@ -36,6 +47,14 @@ class AuthRepositoryImpl implements AuthRepository {
       email: email,
       password: password,
     );
+
+    await localDataSource.saveRegisteredUser(
+      email: email,
+      pseudo: pseudo,
+      password: password,
+      user: userModel,
+    );
+
     await localDataSource.cacheUser(userModel);
     await localDataSource.setGuestMode(false);
     await localDataSource.setHasSeenOnboarding(true);

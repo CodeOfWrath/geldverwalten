@@ -312,7 +312,7 @@ class _AccueilTabState extends State<AccueilTab> {
   }
 
   Widget _buildMainExpenseCard() {
-    final total = _totalDepensesPeriod;
+    final formattedTotal = CurrencyManager.formatConverted(_totalDepensesPeriod, _currencySymbol);
     final titlePeriod = _selectedPeriod == "Jour"
         ? "Dépenses aujourd'hui"
         : _selectedPeriod == "Semaine"
@@ -366,7 +366,7 @@ class _AccueilTabState extends State<AccueilTab> {
           ),
           const SizedBox(height: 12),
           Text(
-            "$total $_currencySymbol",
+            formattedTotal,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -374,6 +374,13 @@ class _AccueilTabState extends State<AccueilTab> {
               letterSpacing: -0.5,
             ),
           ),
+          if (_currencySymbol != "FCFA") ...[
+            const SizedBox(height: 2),
+            const Text(
+              "* Montants convertis (approximation)",
+              style: TextStyle(color: AppColors.yellowEnergy, fontSize: 11, fontStyle: FontStyle.italic),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             children: [
@@ -562,6 +569,8 @@ class _AccueilTabState extends State<AccueilTab> {
     }
 
     final textColor = Theme.of(context).colorScheme.onSurface;
+    final formattedSpent = CurrencyManager.formatConverted(spent, _currencySymbol);
+    final formattedLimit = CurrencyManager.formatConverted(limit, _currencySymbol);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -572,7 +581,7 @@ class _AccueilTabState extends State<AccueilTab> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(category, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-              Text("$spent / $limit $_currencySymbol", style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.7))),
+              Text("$formattedSpent / $formattedLimit", style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.7))),
             ],
           ),
           const SizedBox(height: 6),
@@ -650,9 +659,9 @@ class _DualLineChartPainter extends CustomPainter {
     badgeYIncome = badgeYIncome.clamp(0.0, size.height - 24.0);
     badgeYExpense = badgeYExpense.clamp(0.0, size.height - 24.0);
 
-    // Format text
-    final textIncome = "+$totalIncome $currency";
-    final textExpense = "-$totalExpense $currency";
+    // Format text with currency conversion
+    final textIncome = "+${CurrencyManager.formatConverted(totalIncome, currency)}";
+    final textExpense = "-${CurrencyManager.formatConverted(totalExpense, currency)}";
 
     // Measure text width
     final tpIncome = _layoutText(textIncome, AppColors.primaryGreen);

@@ -10,6 +10,13 @@ abstract class AuthLocalDataSource {
   Future<bool> isGuest();
   Future<void> setHasSeenOnboarding(bool value);
   Future<bool> hasSeenOnboarding();
+  Future<void> saveRegisteredUser({
+    required String email,
+    required String pseudo,
+    required String password,
+    required UserModel user,
+  });
+  Future<UserModel?> validateLocalLogin(String emailOrPseudo, String password);
 }
 
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
@@ -18,6 +25,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   static const String cachedUserKey = 'CACHED_USER_KEY';
   static const String guestModeKey = 'GUEST_MODE_KEY';
   static const String hasSeenOnboardingKey = 'HAS_SEEN_ONBOARDING_KEY';
+  static const String registeredAccountsKey = 'REGISTERED_ACCOUNTS_KEY';
 
   AuthLocalDataSourceImpl({required this.sharedPreferences});
 
@@ -74,5 +82,49 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   @override
   Future<bool> hasSeenOnboarding() async {
     return sharedPreferences.getBool(hasSeenOnboardingKey) ?? false;
+  }
+
+  @override
+  Future<void> saveRegisteredUser({
+    required String email,
+    required String pseudo,
+    required String password,
+    required UserModel user,
+  }) async {
+    final list = await _getRegisteredAccounts();
+    list.add({
+      'email': email.toLowerCase().trim(),
+      'pseudo': pseudo.toLowerCase().trim(),
+      'password': password.trim(),
+      'user': user.toJson(),
+    });
+    await sharedPreferences.setString(registeredAccountsKey, jsonEncode(list));
+  }
+
+  @override
+  Future<UserModel?> validateLocalLogin(String emailOrPseudo, String password) async {
+    final list = await _getRegisteredAccounts();
+    final query = emailOrPseudo.toLowerCase().trim();
+    final inputPass = password.trim();
+
+    for (var acc in list) {
+      final accEmail = (acc['email'] ?? '').toString().toLowerCase();
+      final accPseudo = (acc['pseudo'] ?? '').toString().toLowerCase();
+      final accPass = (acc['password'] ?? '').toString();
+
+      if ((accEmail == query || accPseudo == query) && accPass == inputPass) {
+        return UserModel.fromJson(acc['user']);
+      }
+    }
+    return null;
+  }
+
+  Future<List<Map<String, dynamic>>> _getRegisteredAccounts() async {
+    final raw = sharedPreferences.getString(registeredAccountsKey);
+    if (raw != null) {
+      final List<dynamic> decoded = jsonDecode(raw);
+      return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return [];
   }
 }
