@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/util/currency_manager.dart';
 import '../../../../core/util/data_change_notifier.dart';
 import '../../../../core/util/report_exporter.dart';
 import '../../../entree/domain/entities/entree_entity.dart';
@@ -18,6 +19,7 @@ class _ReportsPageState extends State<ReportsPage> {
   String selectedMonth = "Ce mois-ci";
   List<EntreeEntity> _entrees = [];
   List<SortieEntity> _sorties = [];
+  String _currencySymbol = "FCFA";
 
   @override
   void initState() {
@@ -35,11 +37,13 @@ class _ReportsPageState extends State<ReportsPage> {
   Future<void> _loadData() async {
     final entreesList = await sl.getEntreesUseCase();
     final sortiesList = await sl.getSortiesUseCase();
+    final currency = await CurrencyManager.getCurrency();
 
     if (mounted) {
       setState(() {
         _entrees = entreesList;
         _sorties = sortiesList;
+        _currencySymbol = currency;
       });
     }
   }
@@ -52,6 +56,10 @@ class _ReportsPageState extends State<ReportsPage> {
     final cardBg = Theme.of(context).cardColor;
     final textColor = Theme.of(context).colorScheme.onSurface;
     final subtextColor = textColor.withValues(alpha: 0.7);
+
+    final totalFormatted = isExpenseMode
+        ? CurrencyManager.formatConverted(_totalSorties, _currencySymbol)
+        : CurrencyManager.formatConverted(_totalEntrees, _currencySymbol);
 
     return Scaffold(
       appBar: AppBar(
@@ -190,9 +198,9 @@ class _ReportsPageState extends State<ReportsPage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            isExpenseMode ? "$_totalSorties FCFA" : "$_totalEntrees FCFA",
+                            totalFormatted,
                             style: TextStyle(
-                              fontSize: 28,
+                              fontSize: 26,
                               fontWeight: FontWeight.bold,
                               color: isExpenseMode ? AppColors.accentRed : AppColors.primaryGreen,
                             ),
@@ -214,6 +222,13 @@ class _ReportsPageState extends State<ReportsPage> {
                           ),
                         ],
                       ),
+                      if (_currencySymbol != "FCFA") ...[
+                        const SizedBox(height: 4),
+                        const Text(
+                          "* Montants convertis (approximation)",
+                          style: TextStyle(color: Colors.orange, fontSize: 11, fontStyle: FontStyle.italic),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -285,11 +300,12 @@ class _ReportsPageState extends State<ReportsPage> {
                           separatorBuilder: (context, index) => const Divider(height: 20),
                           itemBuilder: (context, index) {
                             final item = _sorties[index];
+                            final formattedAmount = "-${CurrencyManager.formatConverted(item.montant, _currencySymbol)}";
                             return _buildTransactionRow(
                               context: context,
                               title: item.message,
                               date: item.date,
-                              amount: "-${item.montant} FCFA",
+                              amount: formattedAmount,
                               color: AppColors.accentRed,
                               icon: Icons.remove_circle_outline_rounded,
                             );
@@ -303,11 +319,12 @@ class _ReportsPageState extends State<ReportsPage> {
                           separatorBuilder: (context, index) => const Divider(height: 20),
                           itemBuilder: (context, index) {
                             final item = _entrees[index];
+                            final formattedAmount = "+${CurrencyManager.formatConverted(item.montant, _currencySymbol)}";
                             return _buildTransactionRow(
                               context: context,
                               title: item.origine,
                               date: item.date,
-                              amount: "+${item.montant} FCFA",
+                              amount: formattedAmount,
                               color: AppColors.primaryGreen,
                               icon: Icons.add_circle_outline_rounded,
                             );

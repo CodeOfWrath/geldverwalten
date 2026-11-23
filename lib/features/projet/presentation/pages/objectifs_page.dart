@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/util/currency_manager.dart';
 import '../../../../core/util/data_change_notifier.dart';
 import '../../../../core/util/db_loading_dialog.dart';
 import '../../domain/entities/projet_entity.dart';
@@ -17,6 +18,7 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
   final TextEditingController _nomProjetController = TextEditingController();
   final TextEditingController _montantCibleController = TextEditingController();
   bool _showArchived = false;
+  String _currencySymbol = "FCFA";
 
   @override
   void initState() {
@@ -31,10 +33,14 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
     super.dispose();
   }
 
-  void _loadProjets() {
-    setState(() {
-      _projetsFuture = sl.getProjetsUseCase();
-    });
+  Future<void> _loadProjets() async {
+    final symbol = await CurrencyManager.getCurrency();
+    if (mounted) {
+      setState(() {
+        _currencySymbol = symbol;
+        _projetsFuture = sl.getProjetsUseCase();
+      });
+    }
   }
 
   Future<void> _confirmDeleteProjet(ProjetEntity projet) async {
@@ -266,6 +272,9 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                   final totalActuel = activeProjets.fold<int>(0, (sum, item) => sum + item.montantActuel);
                   final double overallProgress = totalCible > 0 ? (totalActuel / totalCible).clamp(0.0, 1.0) : 0.0;
 
+                  final formattedActuel = CurrencyManager.formatConverted(totalActuel, _currencySymbol);
+                  final formattedCible = CurrencyManager.formatConverted(totalCible, _currencySymbol);
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -322,13 +331,20 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              "$totalActuel / $totalCible FCFA",
+                              "$formattedActuel / $formattedCible",
                               style: const TextStyle(
-                                fontSize: 20,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primaryGreen,
                               ),
                             ),
+                            if (_currencySymbol != "FCFA") ...[
+                              const SizedBox(height: 2),
+                              const Text(
+                                "* Montants convertis (approximation)",
+                                style: TextStyle(color: Colors.orange, fontSize: 11, fontStyle: FontStyle.italic),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -456,6 +472,9 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
     final textColor = Theme.of(context).colorScheme.onSurface;
     final subtextColor = textColor.withValues(alpha: 0.7);
 
+    final formattedActuel = CurrencyManager.formatConverted(p.montantActuel, _currencySymbol);
+    final formattedCible = CurrencyManager.formatConverted(p.montantCible, _currencySymbol);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -497,7 +516,7 @@ class _ObjectifsPageState extends State<ObjectifsPage> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      "${p.montantActuel} / ${p.montantCible} FCFA",
+                      "$formattedActuel / $formattedCible",
                       style: TextStyle(
                         color: subtextColor,
                         fontSize: 12,

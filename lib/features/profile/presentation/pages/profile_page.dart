@@ -471,6 +471,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             context: context,
                             applicationName: "Dépensia",
                             applicationVersion: "1.0.0",
+                            applicationLegalese: "By NTMG • © 2026 Dépensia",
                             applicationIcon: const Text("💰", style: TextStyle(fontSize: 32)),
                             children: const [
                               Text("Dépensia est votre allié financier au quotidien. Gérez vos dépenses, vos revenus et vos objectifs d'épargne en toute sécurité et hors-ligne."),
